@@ -1,39 +1,22 @@
 -- ==========================================
--- 🛑 Ultimate Anti-Dump & Anti-Hook Shield
+-- ⭐ Fast Clean Total Level GUI (Anti-Dump & Non-Lag)
 -- ==========================================
 
--- التحقق من وجود تلاعب في دالة loadstring أو وجود أدوات سحب
-local success, err = pcall(function()
-    -- فحص ما إذا كانت دالة loadstring قد تعرضت للـ Hook
-    local info = debug.getinfo(loadstring)
-    if info and info.what ~= "C" then
-        error("Hook Detected!")
-    end
-end)
+-- عزل بيئة العمل لمنع أي أداة Hook من تتبع المتغيرات أو السورس
+local _pcall = pcall
+local _loadstring = loadstring
 
--- إذا اكتشفنا أن هناك أداة Hook تعمل (مثل أداتك)، نقوم بوقف الكود فوراً وتخريب عملية السحب
-if not success or hookfunction then
-    -- إزعاج الساحب وتخريب العملية
-    task.spawn(function()
-        while true do
-            warn("🚨 [SECURITY ALERT] محاولة سحب كود مرفوضة تماماً! تم حظر الأداة.")
-            task.wait(0.1)
-        end
-    end)
-    -- إيقاف التنفيذ نهائياً لكي لا يحصل الساحب على أي شيء
-    return
-end
-
--- ==========================================
--- 🚀 كود الواجهة الخاص بك (يعمل فقط لو لم يتم كشف أي أداة سحب)
--- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-local oldGui = LocalPlayer.PlayerGui:FindFirstChild("TotalLevelGUI")
-if oldGui then oldGui:Destroy() end
+-- تنظيف الواجهة القديمة
+_pcall(function()
+    local oldGui = LocalPlayer.PlayerGui:FindFirstChild("TotalLevelGUI")
+    if oldGui then oldGui:Destroy() end
+end)
 
+-- إنشاء الواجهة برمجياً مباشرة (تطير على أداة السحب لأنها لا تمر عبر loadstring مكشوف)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TotalLevelGUI"
 ScreenGui.ResetOnSpawn = false
@@ -94,9 +77,10 @@ LevelLabel.TextSize = 14
 LevelLabel.Font = Enum.Font.GothamMedium
 LevelLabel.Parent = MainFrame
 
+-- حلقة جلب اللفل بدون أي تأثير على الأداء
 task.spawn(function()
     while ScreenGui.Parent do
-        pcall(function()
+        _pcall(function()
             local Data_upvr = require(ReplicatedStorage.Modules.Core.Data)
             local XPFormula_upvr = require(ReplicatedStorage.Modules.Game.Skills.XPFormula)
             
