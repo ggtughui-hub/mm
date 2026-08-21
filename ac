@@ -1,0 +1,37 @@
+-- ==========================================
+-- ⭐ Hidden Source Proxy & Auto-Queue Loader
+-- ==========================================
+
+local ScriptURL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/aa"
+
+-- دالة حقن الرابط الأصلي في الطابور لضمان استمراره مع الهوب والريجون
+local function applyQueue()
+    local QueueFunction = queue_on_teleport or (syn and syn.queue_on_teleport) or queueonteleport
+    if QueueFunction then
+        pcall(function()
+            QueueFunction('loadstring(game:HttpGet("' .. ScriptURL .. '"))()')
+        end)
+    end
+end
+
+-- تطبيق الحقن فوراً
+pcall(applyQueue)
+
+-- حماية الـ Teleport لتحديث الطابور مستمراً
+game:GetService("Players").LocalPlayer.OnTeleport:Connect(function(state)
+    if state == Enum.TeleportState.Started then
+        pcall(applyQueue)
+    end
+end)
+
+-- جلب السورس الحقيقي وتنفيذه في الخفاء (بحيث أي Hook يسحب الرابط الأساسي فقط)
+local success, result = pcall(function()
+    return game:HttpGet(ScriptURL)
+end)
+
+if success and result then
+    local executedFunction, err = loadstring(result)
+    if executedFunction then
+        pcall(executedFunction)
+    end
+end
