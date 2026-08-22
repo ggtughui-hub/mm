@@ -1,1 +1,64 @@
 
+-- ==========================================
+-- 🚀 Custom Smart Loader (Anti-Hook Bypass)
+-- ==========================================
+
+-- 1. التعرف على الإكسكيوتر
+local ExecutorName = "Unknown"
+local Env = getgenv and getgenv() or getrenv and getrenv() or {}
+
+if identifyexecutor then 
+    ExecutorName = identifyexecutor()
+elseif getexecutorname then
+    ExecutorName = getexecutorname()
+elseif Env and Env.identifyexecutor then
+    ExecutorName = Env.identifyexecutor()
+end
+
+print("✅ تم التعرف على البيئة: " .. tostring(ExecutorName))
+
+-- 2. تجهيز دوال نظيفة (Bypass Hook)
+-- نحاول استخراج نسخة أصلية من loadstring لم يتم عمل Hook لها
+local SafeLoadstring = loadstring
+local SafeHttpGet = game.HttpGet
+
+if clonefunction then
+    -- clonefunction تنسخ الدالة من الذاكرة بدون الـ Hook
+    SafeLoadstring = clonefunction(loadstring)
+    SafeHttpGet = clonefunction(game.HttpGet)
+end
+
+-- 3. دالة التشغيل المخصص
+local function RunProtectedScript(url)
+    print("🔄 جاري سحب السكربت بطريقة آمنة...")
+    
+    local success, sourceCode = pcall(function()
+        -- استخدام دالة HttpGet النظيفة
+        return SafeHttpGet(game, url)
+    end)
+
+    if not success or not sourceCode or #sourceCode == 0 then
+        warn("❌ فشل في سحب السكربت. تأكد من الرابط.")
+        return
+    end
+
+    -- محاولة تشغيل الكود باستخدام loadstring النظيفة
+    local execSuccess, execErr = pcall(function()
+        local func = SafeLoadstring(sourceCode)
+        if func then
+            func()
+        else
+            error("فشل في تجميع الكود")
+        end
+    end)
+
+    if not execSuccess then
+        warn("❌ خطأ أثناء التشغيل الآمن: " .. tostring(execErr))
+    end
+end
+
+-- 🌐 ضع رابط سكربتك هنا (رابط الـ Raw من GitHub)
+local ScriptURL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+
+-- تشغيل اللودر
+RunProtectedScript(ScriptURL)
