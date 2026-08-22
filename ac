@@ -1,1 +1,144 @@
+-- ==========================================
+-- 🛑 Smart Anti-Hook Shield
+-- ==========================================
 
+local function ShowWarningScreen()
+    local CoreGui = game:GetService("CoreGui")
+    
+    pcall(function()
+        local oldWarn = CoreGui:FindFirstChild("DumpWarningScreen")
+        if oldWarn then oldWarn:Destroy() end
+    end)
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "DumpWarningScreen"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.DisplayOrder = 999999
+    ScreenGui.Parent = CoreGui
+
+    local Blocker = Instance.new("Frame")
+    Blocker.Size = UDim2.new(1, 0, 1, 0)
+    Blocker.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
+    Blocker.BorderSizePixel = 0
+    Blocker.Parent = ScreenGui
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(0.8, 0, 0.4, 0)
+    TextLabel.Position = UDim2.new(0.1, 0, 0.3, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Text = "🚨 تم اكتشاف أداة سحب (Dumper)! 🚨\n\nتم تعطيل السكربت لحمايته.\nأعد دخول اللعبة لإزالة هذه الرسالة."
+    TextLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+    TextLabel.TextScaled = true
+    TextLabel.Font = Enum.Font.GothamBold
+    TextLabel.Parent = Blocker
+    
+    -- إيقاف السكربت نهائياً
+    error("🛑 Anti-Dump Triggered: Script execution halted.")
+end
+
+-- الفحص الذكي: هل تم عمل Hook لـ loadstring؟
+pcall(function()
+    if iscclosure then
+        -- إذا كانت دالة loadstring ليست C++ (يعني أداة السحب استبدلتها بـ Lua)
+        if not iscclosure(loadstring) then
+            ShowWarningScreen()
+            return
+        end
+    else
+        -- طريقة بديلة للفحص إذا كان الإكسكيوتر لا يدعم iscclosure
+        local info = debug.getinfo(loadstring)
+        if info and info.what ~= "C" then 
+            ShowWarningScreen()
+            return
+        end
+    end
+end)
+
+-- ==========================================
+-- ⭐ كود الواجهة الأساسي الخاص بك
+-- ==========================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+pcall(function()
+    local oldGui = LocalPlayer.PlayerGui:FindFirstChild("TotalLevelGUI")
+    if oldGui then oldGui:Destroy() end
+end)
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TotalLevelGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 200, 0, 90)
+MainFrame.Position = UDim2.new(0.05, 0, 0.15, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainFrame
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(255, 215, 0)
+UIStroke.Thickness = 1.5
+UIStroke.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 28)
+Title.BackgroundTransparency = 1
+Title.Text = "⭐ Total Level Tracker"
+Title.TextColor3 = Color3.fromRGB(255, 215, 0)
+Title.TextSize = 13
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 20, 0, 20)
+CloseBtn.Position = UDim2.new(1, -25, 0, 4)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 10
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Parent = MainFrame
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 4)
+CloseCorner.Parent = CloseBtn
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+local LevelLabel = Instance.new("TextLabel")
+LevelLabel.Size = UDim2.new(1, 0, 0, 40)
+LevelLabel.Position = UDim2.new(0, 0, 0, 35)
+LevelLabel.BackgroundTransparency = 1
+LevelLabel.Text = "Total Level: جارِ البحث..."
+LevelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+LevelLabel.TextSize = 14
+LevelLabel.Font = Enum.Font.GothamMedium
+LevelLabel.Parent = MainFrame
+
+-- حلقة جلب اللفل
+task.spawn(function()
+    while ScreenGui.Parent do
+        pcall(function()
+            local Data_upvr = require(ReplicatedStorage.Modules.Core.Data)
+            local XPFormula_upvr = require(ReplicatedStorage.Modules.Game.Skills.XPFormula)
+            
+            if Data_upvr and Data_upvr.xp and Data_upvr.xp.total_level then
+                local currentLevel = XPFormula_upvr.xp_to_level(Data_upvr.xp.total_level)
+                LevelLabel.Text = "Total Level: " .. tostring(currentLevel)
+            end
+        end)
+        task.wait(2)
+    end
+end)
