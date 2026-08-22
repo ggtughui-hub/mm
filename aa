@@ -1,34 +1,53 @@
-
 -- ==========================================
--- 🛑 Ultimate Lockdown & Troll Anti-Dump Shield
+-- 🛑 Ultimate Lockdown & Anti-Dump Shield
 -- ==========================================
 
--- نظام مراقبة شرس يكشف أي محاولة سحب أو تتبع فوراً
-pcall(function()
-    -- حماية وتحصين دالة loadstring ومنع التلاعب بها
-    local _loadstring = loadstring
-    local _error = error
+-- 1. نظام فحص الـ Hook (يكتشف إذا تم العبث بدوال السحب)
+local function CheckEnvironment()
+    local isHooked = false
     
-    if hookfunction then
-        hookfunction(loadstring, function(code, ...)
-            -- إزعاج الساحب برسائل متكررة وجنونية
-            task.spawn(function()
-                for i = 1, 25 do
-                    warn("🚨 انقلللع ماتقدر تسحب السورس! محاولة فاشلة 🚨")
-                    print("❌ اكس امك يا اللي تسحب، السورس محمي ومستحيل تاخذه!")
-                end
-            end)
-            
-            -- قطع الطريق وتخريب عملية السحب بالكامل
-            _error("Access Denied: Protected Source.")
-        end)
-    end
-end)
+    -- فحص إذا كانت دوال الاستدعاء من الخارج (HttpGet) قد تم العبث بها
+    pcall(function()
+        local info = debug.getinfo(game.HttpGet)
+        -- إذا كانت الدالة مبرمجة بلغة Lua بدلاً من C++ (الأصلية)، فهذا يعني أنه تم عمل Hook لها
+        if info and info.what ~= "C" then 
+            isHooked = true
+        end
+        
+        -- فحص دوال الطلب الأخرى المستخدمة في الـ Executors
+        if request then
+            local reqInfo = debug.getinfo(request)
+            if reqInfo and reqInfo.what ~= "C" then
+                isHooked = true
+            end
+        end
+    end)
 
--- حماية إضافية عبر رصد وظائف الـ Dumper أو الـ Sniffer في الذاكرة
+    -- فحص وجود أدوات قراءة ذاكرة معروفة (Memory Dumper)
+    local dumpers = {"dumpstring", "getscriptbytecode", "getscriptclosure"}
+    for _, funcName in ipairs(dumpers) do
+        if getgenv() and getgenv()[funcName] then
+            -- إذا وجدنا أداة سحب، نوقف السكربت فوراً
+            isHooked = true
+            break
+        end
+    end
+
+    return isHooked
+end
+
+-- إذا تم اكتشاف أداة Hook أو سحب، نمسك السكربت ونمنعه من العمل
+if CheckEnvironment() then
+    -- نطرد اللاعب (اختياري) أو نخرج من السكربت بصمت
+    pcall(function()
+        game.Players.LocalPlayer:Kick("🚨 Detected Environment Tampering / Dumper! 🚨")
+    end)
+    return -- إيقاف تنفيذ باقي الكود فوراً
+end
+
+-- 2. حماية البيئة (منع التلاعب بالمتغيرات العامة)
 pcall(function()
     if getgenv then
-        -- إغلاق أي محاولة لقراءة البيئة العامة
         setmetatable(_G, {
             __index = function(t, k)
                 return rawget(t, k)
