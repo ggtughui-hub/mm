@@ -1,1 +1,30 @@
+local ok, sourceCode = pcall(function()
+    return game:HttpGet(TARGET_URL)
+end)
 
+if not ok then
+    warn("HttpGet failed:", sourceCode)
+    return
+end
+
+print("Downloaded:", #sourceCode)
+
+local compileOk, compiledFunc = pcall(function()
+    return loadstring(sourceCode)
+end)
+
+if not compileOk then
+    warn("Compile failed:", compiledFunc)
+    return
+end
+
+if type(compiledFunc) ~= "function" then
+    warn("loadstring did not return a function")
+    return
+end
+
+local runOk, err = pcall(compiledFunc)
+
+if not runOk then
+    warn("Script runtime error:", err)
+end
