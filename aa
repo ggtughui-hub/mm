@@ -6,7 +6,7 @@ local TARGET_URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads
 
 -- 1. تحميل السورس بشكل آمن
 local fetchSuccess, sourceCode = pcall(function()
-    return game:HttpGet(TARGET_URL)
+    return game:HttpGet(https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac)
 end)
 
 if not fetchSuccess or type(sourceCode) ~= "string" or #sourceCode == 0 then
