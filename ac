@@ -1,39 +1,37 @@
 -- ==========================================
--- 🛑 Ultimate Anti-Dump & Anti-Hook Shield
+-- 🛑 Ultimate Anti-Hook & Anti-Dump Lockdown
 -- ==========================================
 
--- التحقق من وجود تلاعب في دالة loadstring أو وجود أدوات سحب
-local success, err = pcall(function()
-    -- فحص ما إذا كانت دالة loadstring قد تعرضت للـ Hook
-    local info = debug.getinfo(loadstring)
-    if info and info.what ~= "C" then
-        error("Hook Detected!")
+-- التحقق من وجود أداة سحب مراقبة للـ loadstring
+pcall(function()
+    if hookfunction and loadstring then
+        local originalLoadstring = loadstring
+        hookfunction(loadstring, function(code, ...)
+            -- إرسال رسائل مزعجة ومستمرة في الكونسول لكل من يحاول السحب
+            task.spawn(function()
+                for i = 1, 10 do
+                    warn("🚨 انقلللع ماتقدر تسحب السورس! محاولة مرفوضة 🚨")
+                end
+            end)
+            -- إرجاع قيمة وهمية أو إيقاف السحب تماماً
+            return function()
+                error("Access Denied: Protected Source.")
+            end
+        end)
     end
 end)
 
--- إذا اكتشفنا أن هناك أداة Hook تعمل (مثل أداتك)، نقوم بوقف الكود فوراً وتخريب عملية السحب
-if not success or hookfunction then
-    -- إزعاج الساحب وتخريب العملية
-    task.spawn(function()
-        while true do
-            warn("🚨 [SECURITY ALERT] محاولة سحب كود مرفوضة تماماً! تم حظر الأداة.")
-            task.wait(0.1)
-        end
-    end)
-    -- إيقاف التنفيذ نهائياً لكي لا يحصل الساحب على أي شيء
-    return
-end
-
--- ==========================================
--- 🚀 كود الواجهة الخاص بك (يعمل فقط لو لم يتم كشف أي أداة سحب)
--- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-local oldGui = LocalPlayer.PlayerGui:FindFirstChild("TotalLevelGUI")
-if oldGui then oldGui:Destroy() end
+-- تنظيف أي واجهة قديمة
+pcall(function()
+    local oldGui = LocalPlayer.PlayerGui:FindFirstChild("TotalLevelGUI")
+    if oldGui then oldGui:Destroy() end
+end)
 
+-- إنشاء الواجهة الأساسية بأمان تام
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TotalLevelGUI"
 ScreenGui.ResetOnSpawn = false
@@ -87,13 +85,13 @@ end)
 local LevelLabel = Instance.new("TextLabel")
 LevelLabel.Size = UDim2.new(1, 0, 0, 40)
 LevelLabel.Position = UDim2.new(0, 0, 0, 35)
-LevelLabel.BackgroundTransparency = 1
-LevelLabel.Text = "Total Level: جارِ البحث..."
+LevelLabel.BackgroundTransparency, LevelLabel.Text = true, "Total Level: جارِ البحث..."
 LevelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 LevelLabel.TextSize = 14
 LevelLabel.Font = Enum.Font.GothamMedium
 LevelLabel.Parent = MainFrame
 
+-- حلقة جلب وتحديث اللفل
 task.spawn(function()
     while ScreenGui.Parent do
         pcall(function()
