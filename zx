@@ -1,30 +1,42 @@
-local ok, sourceCode = pcall(function()
-    return game:HttpGet(TARGET_URL)
-end)
+local TARGET_URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
 
-if not ok then
-    warn("HttpGet failed:", sourceCode)
-    return
+local function Fetch()
+    local ok, src = pcall(function()
+        return game:HttpGet(TARGET_URL)
+    end)
+
+    if not ok or type(src) ~= "string" or src == "" then
+        return nil
+    end
+
+    return src
 end
 
-print("Downloaded:", #sourceCode)
+-- العم ثامر Wrapper
+local function Wrapper(source)
+    local environment = getfenv and getfenv() or _ENV
 
-local compileOk, compiledFunc = pcall(function()
-    return loadstring(sourceCode)
-end)
+    local ok, compiled = pcall(loadstring, source)
+    if not ok or type(compiled) ~= "function" then
+        return false, "Compilation failed"
+    end
 
-if not compileOk then
-    warn("Compile failed:", compiledFunc)
-    return
+    if setfenv then
+        pcall(setfenv, compiled, environment)
+    end
+
+    return pcall(compiled)
 end
 
-if type(compiledFunc) ~= "function" then
-    warn("loadstring did not return a function")
-    return
-end
+local source = Fetch()
 
-local runOk, err = pcall(compiledFunc)
+if source then
+    local success, err = Wrapper(source)
 
-if not runOk then
-    warn("Script runtime error:", err)
+    -- التخلص من المرجع بعد التنفيذ
+    source = nil
+
+    if not success then
+        warn("Wrapper error:", err)
+    end
 end
