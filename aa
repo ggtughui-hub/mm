@@ -1,42 +1,67 @@
-local TARGET_URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+-- ==========================================
+-- العم ثامر | Protected Wrapper Loader
+-- ==========================================
 
-local function Fetch()
-    local ok, src = pcall(function()
-        return game:HttpGet(TARGET_URL)
+local TARGET_URL =
+    "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+
+-- جلب السورس
+local function FetchSource(url)
+    local success, result = pcall(function()
+        return game:HttpGet(url)
     end)
 
-    if not ok or type(src) ~= "string" or src == "" then
-        return nil
+    if not success or type(result) ~= "string" or #result == 0 then
+        return nil, "فشل جلب السورس"
     end
 
-    return src
+    return result
 end
 
--- العم ثامر Wrapper
+-- Wrapper
 local function Wrapper(source)
-    local environment = getfenv and getfenv() or _ENV
+    local env = getfenv and getfenv() or _ENV
 
-    local ok, compiled = pcall(loadstring, source)
-    if not ok or type(compiled) ~= "function" then
-        return false, "Compilation failed"
+    local success, compiled = pcall(function()
+        return loadstring(source)
+    end)
+
+    if not success or type(compiled) ~= "function" then
+        return false, "فشل تحويل السورس"
     end
 
     if setfenv then
-        pcall(setfenv, compiled, environment)
+        pcall(function()
+            setfenv(compiled, env)
+        end)
     end
 
-    return pcall(compiled)
+    local executed, result = pcall(compiled)
+
+    if not executed then
+        return false, result
+    end
+
+    return true, result
 end
 
-local source = Fetch()
+-- ==========================================
+-- العم ثامر Wrapper
+-- ==========================================
 
-if source then
-    local success, err = Wrapper(source)
+local source, fetchError = FetchSource(TARGET_URL)
 
-    -- التخلص من المرجع بعد التنفيذ
-    source = nil
+if not source then
+    warn("[Wrapper] " .. tostring(fetchError))
+    return
+end
 
-    if not success then
-        warn("Wrapper error:", err)
-    end
+local success, result = Wrapper(source)
+
+-- إزالة المراجع بعد انتهاء التنفيذ
+source = nil
+collectgarbage("collect")
+
+if not success then
+    warn("[Wrapper] Execution failed:", result)
 end
