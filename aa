@@ -6,11 +6,16 @@
 local function CheckEnvironment()
     local isHooked = false
     
-    -- فحص إذا كانت دوال الاستدعاء من الخارج (HttpGet) قد تم العبث بها
     pcall(function()
+        -- فحص إذا كانت دوال الاستدعاء من الخارج (HttpGet) قد تم العبث بها
         local info = debug.getinfo(game.HttpGet)
-        -- إذا كانت الدالة مبرمجة بلغة Lua بدلاً من C++ (الأصلية)، فهذا يعني أنه تم عمل Hook لها
         if info and info.what ~= "C" then 
+            isHooked = true
+        end
+        
+        -- فحص دالة loadstring لمنع أدوات الـ Sniffer التي تعترض الأكواد
+        local lsInfo = debug.getinfo(loadstring)
+        if lsInfo and lsInfo.what ~= "C" then
             isHooked = true
         end
         
@@ -27,7 +32,6 @@ local function CheckEnvironment()
     local dumpers = {"dumpstring", "getscriptbytecode", "getscriptclosure"}
     for _, funcName in ipairs(dumpers) do
         if getgenv() and getgenv()[funcName] then
-            -- إذا وجدنا أداة سحب، نوقف السكربت فوراً
             isHooked = true
             break
         end
@@ -38,11 +42,10 @@ end
 
 -- إذا تم اكتشاف أداة Hook أو سحب، نمسك السكربت ونمنعه من العمل
 if CheckEnvironment() then
-    -- نطرد اللاعب (اختياري) أو نخرج من السكربت بصمت
     pcall(function()
         game.Players.LocalPlayer:Kick("🚨 Detected Environment Tampering / Dumper! 🚨")
     end)
-    return -- إيقاف تنفيذ باقي الكود فوراً
+    return -- إيقاف تنفيذ باقي الكود فوراً قبل أن تُسحب الأكواد
 end
 
 -- 2. حماية البيئة (منع التلاعب بالمتغيرات العامة)
