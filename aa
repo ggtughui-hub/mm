@@ -1,51 +1,29 @@
 -- ==========================================
--- 🛑 Ultimate Lockdown & Anti-Dump Shield
+-- 🛑 Basic Environment Shield
 -- ==========================================
 
--- 1. نظام فحص الـ Hook (يكتشف إذا تم العبث بدوال السحب)
-local function CheckEnvironment()
-    local isHooked = false
+-- 1. نظام فحص دوال السحب المعروفة فقط (دون التدخل في دوال الإكسكيوتر)
+local function CheckDumpers()
+    local isDumped = false
     
-    pcall(function()
-        -- فحص إذا كانت دوال الاستدعاء من الخارج (HttpGet) قد تم العبث بها
-        local info = debug.getinfo(game.HttpGet)
-        if info and info.what ~= "C" then 
-            isHooked = true
-        end
-        
-        -- فحص دالة loadstring لمنع أدوات الـ Sniffer التي تعترض الأكواد
-        local lsInfo = debug.getinfo(loadstring)
-        if lsInfo and lsInfo.what ~= "C" then
-            isHooked = true
-        end
-        
-        -- فحص دوال الطلب الأخرى المستخدمة في الـ Executors
-        if request then
-            local reqInfo = debug.getinfo(request)
-            if reqInfo and reqInfo.what ~= "C" then
-                isHooked = true
-            end
-        end
-    end)
-
     -- فحص وجود أدوات قراءة ذاكرة معروفة (Memory Dumper)
     local dumpers = {"dumpstring", "getscriptbytecode", "getscriptclosure"}
     for _, funcName in ipairs(dumpers) do
         if getgenv() and getgenv()[funcName] then
-            isHooked = true
+            isDumped = true
             break
         end
     end
 
-    return isHooked
+    return isDumped
 end
 
--- إذا تم اكتشاف أداة Hook أو سحب، نمسك السكربت ونمنعه من العمل
-if CheckEnvironment() then
+-- إذا تم اكتشاف أداة سحب ذاكرة، نوقف السكربت فوراً
+if CheckDumpers() then
     pcall(function()
-        game.Players.LocalPlayer:Kick("🚨 Detected Environment Tampering / Dumper! 🚨")
+        game.Players.LocalPlayer:Kick("🚨 Detected Memory Dumper! 🚨")
     end)
-    return -- إيقاف تنفيذ باقي الكود فوراً قبل أن تُسحب الأكواد
+    return 
 end
 
 -- 2. حماية البيئة (منع التلاعب بالمتغيرات العامة)
