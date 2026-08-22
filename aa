@@ -1,40 +1,42 @@
---[[
-============================================================
-████████████████████████████████████████████████████████████
-                    ثامر العم
-                    ثامر العم
-                    ثامر العم
-                    ثامر العم
-                    ثامر العم
-                    ثامر العم
-                    ثامر العم
-                    ثامر العم
-                    ثامر العم
-============================================================
---]]
+local TARGET_URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
 
-local WRAPPER_NAME = "ثامر العم"
+local function Fetch()
+    local ok, src = pcall(function()
+        return game:HttpGet(TARGET_URL)
+    end)
 
-local URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+    if not ok or type(src) ~= "string" or src == "" then
+        return nil
+    end
 
-local ok, source = pcall(function()
-    return game:HttpGet(URL)
-end)
-
-if not ok then
-    warn("Wrapper failed:", source)
-    return
+    return src
 end
 
-local compileOK, fn = pcall(loadstring, source)
+-- العم ثامر Wrapper
+local function Wrapper(source)
+    local environment = getfenv and getfenv() or _ENV
 
-if not compileOK or type(fn) ~= "function" then
-    warn("Wrapper compile failed")
-    return
+    local ok, compiled = pcall(loadstring, source)
+    if not ok or type(compiled) ~= "function" then
+        return false, "Compilation failed"
+    end
+
+    if setfenv then
+        pcall(setfenv, compiled, environment)
+    end
+
+    return pcall(compiled)
 end
 
-local runOK, err = pcall(fn)
+local source = Fetch()
 
-if not runOK then
-    warn("Wrapper runtime error:", err)
+if source then
+    local success, err = Wrapper(source)
+
+    -- التخلص من المرجع بعد التنفيذ
+    source = nil
+
+    if not success then
+        warn("Wrapper error:", err)
+    end
 end
