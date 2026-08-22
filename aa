@@ -25,7 +25,7 @@ local fakeSource = [[
 ]]
 
 -- 4. رابط السكربت الحقيقي (رابط الـ GitHub)
-local ScriptURL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+local ScriptURL ="https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
 
 -- 5. التشغيل الذكي
 local success, realCode = pcall(function()
