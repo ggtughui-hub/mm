@@ -1,0 +1,75 @@
+-- ==========================================
+-- 🛡️ Advanced Bootstrap Protection Layer
+-- ==========================================
+-- يتم تشغيل هذا السكربت كطبقة وسيطة (Middleware)
+-- لا يحتوي على أي سورس أساسي، بل يقوم بتحميله وتأمينه
+
+return (function()
+    -- 1. عزل الدوال الأصلية من بيئة الروبلوكس المعزولة (RenV)
+    -- أغلب أدوات الـ Hook تعترض الدوال في الـ Global Space، ولا تصل لـ RenV
+    local rEnv = getrenv()
+    if not rEnv then return end
+
+    local sHttpGet = rEnv.game.HttpGet
+    local sLoadstring = rEnv.loadstring
+
+    -- 2. نسخ الدوال بشكل مستقل في الذاكرة إذا كان الإكسكيوتر يدعم clonefunction
+    -- هذا يضمن أن نسختنا من loadstring لم يتم عمل Hook لها
+    if clonefunction then
+        sHttpGet = clonefunction(rEnv.game.HttpGet)
+        sLoadstring = clonefunction(rEnv.loadstring)
+    end
+
+    -- 3. تحديد رابط السكربت (مكان واحد فقط للتغيير)
+    -- تم تقسيم الرابط لمنع أدوات قراءة النصوص (String Scrapers) من اكتشافه بسهولة
+    local p1 = "https://raw.githubuserc"
+    local p2 = "ontent.com/ggtughui-hub/"
+    local p3 = "mm/refs/heads/main/ac"
+    local targetURL = p1 .. p2 .. p3
+
+    -- 4. الكود الوهمي (الطُعم) الذي سيواجه أداة السحب
+    -- أداة السحب ستعترض هذا الكود وتحفظه بدلاً من السكربت الحقيقي
+    local baitCode = "local p=game:GetService('Players').LocalPlayer;while true do p:Kick('Dumping Detected')end"
+
+    -- 5. التحميل الآمن
+    local isHookDetected = false
+
+    -- فحص ما إذا كان قد تم العبث بـ loadstring العادية
+    pcall(function()
+        if iscclosure and not iscclosure(loadstring) then
+            isHookDetected = true
+        elseif debug.getinfo(loadstring).what ~= "C" then
+            isHookDetected = true
+        end
+    end)
+
+    -- جلب السورس الحقيقي باستخدام الدالة المعزولة
+    local success, realSource = pcall(sHttpGet, game, targetURL)
+
+    if not success or not realSource or #realSource == 0 then
+        return -- تجاهل صامت لأي فشل في التحميل بدون كشف معلومات
+    end
+
+    -- 6. التشغيل والخداع (Execution & Bait)
+    if isHookDetected then
+        -- 🚨 تم اكتشاف أداة Hook!
+        -- نطعمها الكود الوهمي عبر loadstring العادية (الملوثة)
+        pcall(loadstring, baitCode)
+        
+        -- ✅ نشغل السورس الحقيقي بصمت عبر الدالة المعزولة (النظيفة)
+        local compiledFunc = sLoadstring(realSource)
+        realSource = nil -- تنظيف النص من الذاكرة فور تجميعه
+        
+        if compiledFunc then
+            pcall(compiledFunc)
+        end
+    else
+        -- ✅ البيئة نظيفة، تشغيل عادي جداً عبر الدالة المعزولة
+        local compiledFunc = sLoadstring(realSource)
+        realSource = nil -- تنظيف النص من الذاكرة
+        
+        if compiledFunc then
+            pcall(compiledFunc)
+        end
+    end
+end)()
