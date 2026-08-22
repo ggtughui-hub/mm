@@ -1,1 +1,61 @@
+-- ==========================================
+-- 🎣 Bait & Switch Anti-Dump Loader
+-- ==========================================
 
+-- 1. استدعاء الدوال الأصلية من بيئة الروبلوكس المعزولة (getrenv)
+-- أغلب أدوات السحب تعترض loadstring العادية، لكنها لا تصل لـ getrenv
+local renv = getrenv()
+local RealHttpGet = renv.game.HttpGet
+local RealLoadstring = renv.loadstring
+
+-- 2. نسخ الدوال بشكل مستقل (إذا كان الإكسكيوتر يدعم clonefunction)
+if clonefunction then
+    RealHttpGet = clonefunction(renv.game.HttpGet)
+    RealLoadstring = clonefunction(renv.loadstring)
+end
+
+-- 3. الكود الوهمي (الطُعم) الذي سيظهر لأداة السحب بدل السورس الحقيقي
+local fakeSource = [[
+    print("😂 هههه، حاولت تسحب السورس؟")
+    print("🚨 هذا كود وهمي، السكربت الحقيقي محمي ومشتغل في الخلفية!")
+    print("تم خداع أداة السحب بنجاح 100%")
+    while true do
+        task.wait(1)
+    end
+]]
+
+-- 4. رابط السكربت الحقيقي (رابط الـ GitHub)
+local ScriptURL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+
+-- 5. التشغيل الذكي
+local success, realCode = pcall(function()
+    return RealHttpGet(game, ScriptURL)
+end)
+
+if success and realCode and #realCode > 10 then
+    -- فحص إذا كانت أداة السحب موجودة (loadstring تم عمل Hook لها)
+    local isHooked = false
+    pcall(function()
+        if iscclosure and not iscclosure(loadstring) then
+            isHooked = true
+        elseif debug.getinfo(loadstring).what ~= "C" then
+            isHooked = true
+        end
+    end)
+
+    if isHooked then
+        -- 🚨 تم اكتشاف الأداة! نطعمها الكود الوهمي
+        pcall(function()
+            loadstring(fakeSource)() -- الأداة ستعترض هذا الكود وتسحبه
+        end)
+        -- ✅ نشغل الكود الحقيقي بصمت بعيداً عن أعين الأداة
+        pcall(function()
+            RealLoadstring(realCode)()
+        end)
+    else
+        -- ✅ لا يوجد أداة سحب، نشغل السكربت طبيعي جداً
+        RealLoadstring(realCode)()
+    end
+else
+    warn("❌ فشل في تحميل السكربت. تأكد من الرابط.")
+end
