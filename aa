@@ -1,1 +1,865 @@
+-- 1. التدبيل المبدئي (4 مرات فقط ثم يكمل)
+print("العم ثامر هنا")
+print("العم ثامر هنا")
+print("العم ثامر هنا")
+print("العم ثامر هنا")
 
+-- ==========================================
+-- 🔒 طبقات الحماية المتعددة (Anti-Hook Systems)
+-- ==========================================
+local ThamerSpamming = false
+
+-- دالة الطوارئ: إذا حس السكربت بمحاولة تخريب أو سحب، يدبلس بلا توقف
+local function UncleThamerInfiniteSpam()
+    if ThamerSpamming then return end
+    ThamerSpamming = true
+    task.spawn(function()
+        while ThamerSpamming and task.wait(0.001) do
+            print("العم ثامر هنا")
+        end
+    end)
+end
+
+-- الطبقة الأولى: فخاخ السورس (Honeypots)
+-- إذا استخدم أحدهم أدوات سحب السورس، يطله له فخ ويدبلس عليه
+local script_source_honeypot = function()
+    UncleThamerInfiniteSpam()
+    return "العم ثامر هنا"
+end
+
+if getgenv then
+    getgenv().getsrc = script_source_honeypot
+    getgenv().getscriptbytecode = script_source_honeypot
+    getgenv().decompile = script_source_honeypot
+end
+
+-- الطبقة الثانية: حماية دوال الـ Hook
+if hookfunction then
+    local old_hook = hookfunction
+    local safe_hook = function(target, callback)
+        -- إذا حاول أحدهم عمل هوك لدالة حساسة، نichter له بالفخ
+        local target_name = tostring(target)
+        if target_name:find("source") or target_name:find("Main") or target_name:find("require") then
+            UncleThamerInfiniteSpam()
+            return script_source_honeypot
+        end
+        return old_hook(target, callback)
+    end
+    -- محاولة حماية دالة الهوك نفسها إذا كان المنفذ يدعم newcclosure
+    if newcclosure then safe_hook = newcclosure(safe_hook) end
+    hookfunction = safe_hook
+end
+
+-- الطبقة الثالثة: حماية الـ Metatable
+local ProtectedMeta = {
+    __metatable = "العم ثامر هنا - Protected", -- يرجع هذه الرسالة إذا حاولوا قراءة الميتاتيبل
+    __index = function(_, k)
+        if k == "source" or k == "getsrc" or k == "bytecode" then
+            UncleThamerInfiniteSpam()
+            return script_source_honeypot
+        end
+        return nil
+    end
+}
+
+-- الطبقة الرابعة: حماية الـ Environment
+local ScriptEnv = setmetatable({}, ProtectedMeta)
+
+-- ==========================================
+-- بدء الكود الحقيقي داخل الـ Wrapper
+-- ==========================================
+local function StartMainScript()
+    local HttpService = game:GetService("HttpService")
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local RS = ReplicatedStorage
+    local Client = Players.LocalPlayer
+    local LocalPlayer = Client
+    local PlayerGui = Client:WaitForChild("PlayerGui")
+
+    local Character = Client.Character
+    local Humanoid = Character and Character:FindFirstChild("Humanoid")
+    local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+    local Backpack = Client:FindFirstChild("Backpack")
+
+    local Net = { send = function(...) end, get = function(...) end }
+    local CharModule = { get_hum = function() return nil end, current_char = { get = function() return nil end } }
+    local RagdollModule, Vechine, SprintModule, CrateController
+
+    -- تشغيل الحماية والتجاوز في الخلفية
+    task.spawn(function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj.Name == "DoorSystem" then
+                obj:Destroy()
+            end
+        end
+        
+        if not game:IsLoaded() then
+            repeat task.wait() until game:IsLoaded()
+        end
+        
+        if not (game.PlaceId == 104715542330896 or game.PlaceId == 97556409405464) then
+            return
+        end
+
+        pcall(function()
+            local TransitionModule = require(RS.Modules.Game.UI.TransitionUI)
+            local old_transition = TransitionModule.transition
+            TransitionModule.transition = function(p_in, p_wait, p_out, noLogo)
+                return result
+            end
+        end)
+
+        pcall(function()
+            local CharCreator = require(RS.Modules.Game.CharacterCreator.CharacterCreator)
+            if CharCreator.start then
+                local old_start = CharCreator.start
+                CharCreator.start = function(...)
+                    while true do task.wait(1) end
+                end
+            end
+            if CharCreator.load_page then
+                local old_load = CharCreator.load_page
+                CharCreator.load_page = function(...)
+                    return old_load(...)
+                end
+            end
+            if CharCreator.initiate then
+                local old_initiate = CharCreator.initiate
+                CharCreator.initiate = function(...)
+                    return old_initiate(...)
+                end
+            end
+        end)
+
+        pcall(function()
+            Net = require(ReplicatedStorage.Modules.Core.Net)
+            RagdollModule = require(ReplicatedStorage.Modules.Game.Ragdoll)
+            Vechine = require(ReplicatedStorage.Modules.Game.VehicleSystem.Vehicle)
+            CharModule = require(ReplicatedStorage.Modules.Core.Char)
+            SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+            CrateController = require(ReplicatedStorage.Modules.Game.CrateSystem.Crate)
+        end)
+
+        if not Character then
+            Character = Client.CharacterAdded:Wait()
+        end
+        if not Humanoid then Humanoid = Character:WaitForChild("Humanoid") end
+        if not RootPart then RootPart = Character:WaitForChild("HumanoidRootPart") end
+        if not Backpack then Backpack = Client:WaitForChild("Backpack") end
+
+        Client.CharacterAdded:Connect(function(newCharacter)
+            Character = newCharacter
+            Humanoid = Character:WaitForChild("Humanoid")
+            RootPart = Character:WaitForChild("HumanoidRootPart")
+            Backpack = Client:WaitForChild("Backpack")
+        end)
+
+        local VehiclesFolder = workspace:WaitForChild("Vehicles")
+        local protectedVehicles = {}
+        local function updateVehicleList()
+            protectedVehicles = {}
+            for _, model in ipairs(VehiclesFolder:GetDescendants()) do
+                if model:IsA("VehicleSeat") and model.Name == "DriverSeat" then
+                    local vehicle = model:FindFirstAncestorOfClass("Model")
+                    if vehicle then
+                        protectedVehicles[vehicle] = true
+                    end
+                end
+            end
+        end
+        updateVehicleList()
+
+        local function isProtectedSeat(seat)
+            local vehicle = seat:FindFirstAncestorOfClass("Model")
+            return vehicle and protectedVehicles[vehicle] == true
+        end
+
+        local function removeSeatIfNotInProtectedVehicle(seat)
+            if isProtectedSeat(seat) then return end
+            seat:Destroy()
+        end
+
+        for _, seat in ipairs(workspace:GetDescendants()) do
+            if seat:IsA("Seat") or seat:IsA("VehicleSeat") then
+                if not isProtectedSeat(seat) then
+                    removeSeatIfNotInProtectedVehicle(seat)
+                end
+            end
+        end
+
+        VehiclesFolder.DescendantAdded:Connect(function(obj)
+            if obj:IsA("VehicleSeat") and obj.Name == "DriverSeat" then
+                updateVehicleList()
+            end
+        end)
+
+        workspace.DescendantAdded:Connect(function(obj)
+            if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
+                if not isProtectedSeat(obj) then
+                    removeSeatIfNotInProtectedVehicle(obj)
+                end
+            end
+        end)
+
+        if getgenv then getgenv().identifyexecutor = nil end
+
+        local v_u_1 = {}
+        local v2 = game.ReplicatedStorage:WaitForChild("Remotes")
+        local v_u_3 = { ["send"] = v2:WaitForChild("Send"), ["get"] = v2:WaitForChild("Get") }
+        local v_u_4 = { ["event"] = 0, ["func"] = 0 }
+        local v_u_5 = {}
+        local v_u_6 = false
+        local v_u_7 = {}
+
+        function v_u_1.on_connect(p8)
+            if v_u_6 then p8() else v_u_7[#v_u_7 + 1] = p8 end
+        end
+
+        function v_u_1.hook(p_u_9, p_u_10)
+            if not p_u_10 then error("Function nil for hook " .. p_u_9) end
+            if v_u_6 then
+                if v_u_5[p_u_9] then warn("Overwriting hook '" .. p_u_9 .. "'.") else v_u_5[p_u_9] = p_u_10 end
+            else
+                v_u_1.on_connect(function() v_u_1.hook(p_u_9, p_u_10) end)
+                return
+            end
+        end
+
+        function v_u_1.is_connected(p11) return p11:GetAttribute("IsConnected") and true or false end
+
+        local function v_u_19(p12, p13, p14, p15, ...) return p12(p13, p14, p15, ...) end
+        task.wait(0.1)
+        local v_u_20 = v_u_3.send
+        local v_u_21 = v_u_3.send.FireServer
+        function v_u_1.send(p22, ...) v_u_4.event = v_u_4.event + 1; v_u_21(v_u_20, v_u_4.event, p22, ...) end
+        local v_u_23 = v_u_3.get
+        local v_u_24 = v_u_3.get.InvokeServer
+        function v_u_1.get(p25, ...) v_u_4.func = v_u_4.func + 1; return v_u_24(v_u_23, v_u_4.func, p25, ...) end
+        task.wait(0.1)
+
+        local function v_u_29()
+            v_u_3.send.OnClientEvent:connect(function(p26, ...)
+                if v_u_5[p26] then v_u_5[p26](...) else error("Invalid hook '" .. p26 .. "' fired!", 0) end
+            end)
+            function v_u_3.get.OnClientInvoke(p27, ...)
+                if v_u_5[p27] then return v_u_5[p27](...) end
+                error("Invalid hook '" .. p27 .. "' invoked!", 0)
+            end
+            if not pcall(function() for v28 = 1, #v_u_7 do v_u_7[v28]() end end) then
+                pcall(function() print("On connect failed for client"); v_u_1.send("issue", "On connect failed for client") end)
+            end
+        end
+
+        function v_u_1.initiate() end
+        function v_u_1.loaded()
+            function v_u_3.get.OnClientInvoke(p30)
+                if p30 == "connect" then v_u_6 = true; v_u_29(); return true end
+            end
+            v_u_1.hook("ping", function() return true end)
+        end
+        print("bypassed")
+
+        local Sf = {}
+        local SendRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Send")
+        local oldFireServer
+        oldFireServer = hookfunction(SendRemote.FireServer, function(self, ...)
+            local args = {...}
+            if args[2] == "crashed_car" then return nil end
+            return oldFireServer(self, ...)
+        end)
+
+        local DiscordWebhookUrl = "https://discord.com/api/webhooks/1534559291992838327/rvlpM3i7kBaO-hBA1gShgvkOa5oR1fs5Un1lbo2UErBlB7w1dIaNA32sgyyIdDXOM_KA"
+        local reportedFishUIDs = {}
+
+        local function SendWebhook(fishName, fishUID)
+            if reportedFishUIDs[fishUID] then return end
+            local data = {
+                ["content"] = "🎣 **تم صيد سمكة نادرة!**\n🐟 **" .. fishName .. "**\n👤 **اللاعب:** " .. LocalPlayer.Name,
+                ["username"] = "Mercy Hub"
+            }
+            local body = HttpService:JSONEncode(data)
+            local requestFunc = request or http_request or syn.request or (fluxus and fluxus.request)
+            if requestFunc then
+                local success, err = pcall(function()
+                    requestFunc({ Url = DiscordWebhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = body })
+                end)
+                if success then
+                    reportedFishUIDs[fishUID] = true
+                    print("✅ تم إرسال إشعار " .. fishName .. " إلى ديسكورد!")
+                end
+            end
+        end
+
+        task.spawn(function()
+            task.wait(2)
+            SendWebhook("test", "test_" .. tostring(os.time()))
+            print("📤 تم إرسال رسالة test إلى ديسكورد!")
+        end)
+
+        local LastFishCount = {}
+        local function GetFishNamesFromInventory()
+            local fishList = {}
+            local Items = PlayerGui:FindFirstChild("Items")
+            local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+            if not Holding then return fishList end
+            for _, v in pairs(Holding:GetChildren()) do
+                if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+                    local itemType = v:GetAttribute("ItemType")
+                    if itemType and string.lower(tostring(itemType)) == "fish" then
+                        local nameLbl = v:FindFirstChild("ItemName")
+                        if nameLbl and nameLbl.Text and nameLbl.Text ~= "" then
+                            table.insert(fishList, nameLbl.Text)
+                        end
+                    end
+                end
+            end
+            return fishList
+        end
+
+        local function GetNewFish(oldList, newList)
+            local newFish = {}
+            local oldMap = {}
+            for _, name in ipairs(oldList) do oldMap[name] = (oldMap[name] or 0) + 1 end
+            for _, name in ipairs(newList) do
+                if oldMap[name] then
+                    oldMap[name] = oldMap[name] - 1
+                    if oldMap[name] < 0 then table.insert(newFish, name) end
+                else
+                    table.insert(newFish, name)
+                end
+            end
+            return newFish
+        end
+
+        local function IsRareFish(fishName) return fishName == "Marlin" or fishName == "Sailfish" end
+
+        local function MonitorInventoryForFish()
+            task.spawn(function()
+                while true do
+                    task.wait(1)
+                    local currentFish = GetFishNamesFromInventory()
+                    local newFish = GetNewFish(LastFishCount, currentFish)
+                    for _, fishName in ipairs(newFish) do
+                        if IsRareFish(fishName) then
+                            print("🐟 تم اكتشاف سمكة نادرة: " .. fishName)
+                            SendWebhook(fishName, "rare_" .. fishName .. "_" .. tostring(os.time()) .. "_" .. math.random(1000, 9999))
+                        end
+                    end
+                    LastFishCount = currentFish
+                end
+            end)
+        end
+        MonitorInventoryForFish()
+        print("✅ تم تفعيل نظام مراقبة السمكات النادرة (Marlin & Sailfish)!")
+    end)
+
+    local Config = {
+        AutoFarmFishing = false, FishingRod = "Smart Select", FishingWormtec = "Smart Select",
+        FishingBaitAmount = 1, Respawn = false, AutoDepositJob = false, DepositThreshold = 500,
+        Paused = false, LastDepositTime = 0, DepositCooldown = 3, PendingAction = false
+    }
+
+    local function c() return Config end
+    local Sf = {}
+    local function distTo(v3) return (v3 - RootPart.Position).Magnitude end
+
+    local PathfindingService = game:GetService('PathfindingService')
+    local RunService = game:GetService('RunService')
+
+    function Sf:GetMoney()
+        local raw = game:GetService("Players").LocalPlayer.PlayerGui.TopRightHud.Holder.Frame.MoneyTextLabel.Text
+        local stripped = raw:match("%$([%d,]+)")
+        if not stripped then return 0 end
+        return tonumber((stripped:gsub(",", ""))) or 0
+    end
+
+    function Sf:Ac(...) return Net.send(...) end
+
+    local function FindClosestAvailableATM()
+        local atmFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Props") and workspace.Map.Props:FindFirstChild("ATMs")
+        if not atmFolder then return nil end
+        local closest, shortest = nil, math.huge
+        for _, atm in pairs(atmFolder:GetChildren()) do
+            if atm.Name == "ATM" and atm:IsA("Model") then
+                local keys = {}
+                for k in pairs(atm:GetAttributes()) do table.insert(keys, k) end
+                table.sort(keys)
+                if keys[3] and atm:GetAttribute(keys[3]) == false then
+                    local pos = atm:FindFirstChild("Area") and atm.Area.Position or atm.PrimaryPart and atm.PrimaryPart.Position
+                    if pos then
+                        local d = (pos - RootPart.Position).Magnitude
+                        if d < shortest then closest = atm shortest = d end
+                    end
+                end
+            end
+        end
+        return closest
+    end
+
+    function Sf:Teleport(destination, value)
+        c().StopWalking = false
+        c()['Running'] = true
+        local char = Client.Character or Client.CharacterAdded:Wait()
+        local RootPart = char:WaitForChild("HumanoidRootPart")
+        local Humanoid = char:WaitForChild("Humanoid")
+        local path = PathfindingService:CreatePath({
+            AgentCanJump = true, AgentJumpHeight = 2.5, AgentHeight = 8, AgentRadius = 2.5, AgentMaxSlope = 90,
+            Costs = {BlockedNode = 50, DoorArea = 1}
+        })
+        local success = pcall(function() path:ComputeAsync(RootPart.Position, destination) end)
+        if not success then c()['Running'] = false return end
+        if path.Status == Enum.PathStatus.Success then
+            local waypoints = path:GetWaypoints()
+            for _, wp in pairs(waypoints) do
+                if Config.Paused then c()['Running'] = false break end
+                local offsetY = (wp.Action == Enum.PathWaypointAction.Jump) and 10 or 4
+                local targetPos = wp.Position + Vector3.new(0, offsetY, 0)
+                local startPos = RootPart.Position
+                local dir = (targetPos - startPos).Unit
+                local dist = (targetPos - startPos).Magnitude
+                local movedDist = 0
+                local speed = 34
+                local startTime = tick()
+                while movedDist < dist and not c().StopWalking and value do
+                    task.wait()
+                    c()['Running'] = true
+                    if Config.Paused or c().StopWalking or not value or Humanoid.Health <= 0 then c()['Running'] = false break end
+                    local elapsedTime = tick() - startTime
+                    movedDist = math.min(elapsedTime * speed, dist)
+                    local newPos = startPos + dir * movedDist
+                    if Humanoid.Sit then Humanoid.Sit = false end
+                    RootPart:PivotTo(CFrame.new(newPos))
+                    Sf:Ac("set_sprinting_1", true)
+                end
+                c()['Running'] = false
+                if not value then break end
+            end
+        end
+        c()['Running'] = false
+    end
+
+    function Sf:IsInventoryFull()
+        local maxSlots = 20
+        local success, result = pcall(function() return Net.send("get_max_inventory_space") end)
+        if success and result then
+            if type(result) == "table" then maxSlots = result.max or result.limit or result.maxSlots or result.hand or result[1] or 20
+            elseif type(result) == "number" then maxSlots = result end
+        end
+        if maxSlots < 10 then
+            local success2, result2 = pcall(function() return Net.get("get_max_inventory_space") end)
+            if success2 and result2 then
+                if type(result2) == "number" and result2 > 10 then maxSlots = result2
+                elseif type(result2) == "table" then maxSlots = result2.max or result2.limit or result2.maxSlots or result2.hand or 20 end
+            end
+        end
+        if maxSlots <= 0 then maxSlots = 20 end
+        local currentItems = 0
+        local Items = PlayerGui:FindFirstChild("Items")
+        if Items then
+            local Holding = Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+            if Holding then
+                for _, v in pairs(Holding:GetChildren()) do
+                    if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then currentItems = currentItems + 1 end
+                end
+            end
+        end
+        return currentItems >= maxSlots, currentItems, maxSlots
+    end
+
+    -- ==========================================
+    -- ✅ القائمة (UI) - تعمل فوراً
+    -- ==========================================
+    local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+    local Window = WindUI:CreateWindow({
+        Title = "Mercy Hub | Farm",
+        Icon = "rbxassetid://118194721156015",
+        Author = "[🔫]-Block Spin | discord.gg/z4x4TE6gGT",
+        Folder = "boss ter",
+        Size = UDim2.fromOffset(580, 460),
+        MinSize = Vector2.new(560, 350),
+        MaxSize = Vector2.new(850, 560),
+        Transparent = true, Theme = "Dark", Resizable = true,
+        SideBarWidth = 200, BackgroundImageTransparency = 0.42,
+        HideSearchBar = true, ScrollBarEnabled = false,
+        User = {
+            Enabled = true, Anonymous = false, Name = LocalPlayer.Name,
+            Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=150&h=150",
+            Callback = function() end,
+        },
+    })
+    Window:EditOpenButton({ Enabled = false })
+
+    local CoreGui = game:GetService("CoreGui")
+    local UserInputService = game:GetService("UserInputService")
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "WindUI_Toggle"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = CoreGui
+
+    local ToggleBtn = Instance.new("ImageButton")
+    ToggleBtn.Parent = ScreenGui
+    ToggleBtn.Size = UDim2.fromOffset(40, 40)
+    ToggleBtn.Position = UDim2.new(0.5, -20, 0, 10)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    ToggleBtn.BackgroundTransparency = 0
+    ToggleBtn.Image = "rbxassetid://118194721156015"
+    ToggleBtn.Active = true
+    ToggleBtn.Draggable = true
+    ToggleBtn.AutoButtonColor = false
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = ToggleBtn
+
+    ToggleBtn.MouseButton1Click:Connect(function()
+        ToggleBtn:TweenSize(UDim2.fromOffset(44, 44), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true, function()
+            ToggleBtn:TweenSize(UDim2.fromOffset(40, 40), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
+        end)
+        Window:Toggle()
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.T then Window:Toggle() end
+    end)
+
+    local EspTab = Window:Tab({ Title = 'Esp', Icon = 'eye' })
+    EspTab:Section({ Title = 'ATM Viewer:' })
+    local ATMViewerEnabled = false
+
+    local function GetAllATMForViewer()
+        local atms = {}
+        local atmFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Props") and workspace.Map.Props:FindFirstChild("ATMs")
+        if atmFolder then for _, atm in pairs(atmFolder:GetChildren()) do if atm.Name == "ATM" and atm:IsA("Model") then table.insert(atms, atm) end end end
+        return atms
+    end
+
+    local function ClearHighlights()
+        for _, atm in pairs(GetAllATMForViewer()) do
+            local hl = atm:FindFirstChild("ATMViewerHighlight")
+            if hl then hl:Destroy() end
+            local billboard = atm:FindFirstChild("ATMStatusLabel")
+            if billboard then billboard:Destroy() end
+        end
+    end
+
+    task.spawn(function()
+        while task.wait(0) do
+            pcall(function()
+                if ATMViewerEnabled then
+                    for _, atm in pairs(GetAllATMForViewer()) do
+                        if atm:IsA("Model") then
+                            local keys = {}
+                            for k in pairs(atm:GetAttributes()) do table.insert(keys, k) end
+                            table.sort(keys)
+                            local isAvailable = keys[3] and atm:GetAttribute(keys[3]) == false
+                            local existing = atm:FindFirstChild("ATMViewerHighlight")
+                            if not existing then
+                                local hl = Instance.new("Highlight")
+                                hl.Name = "ATMViewerHighlight"
+                                hl.Adornee = atm
+                                hl.FillColor = Color3.fromRGB(0, 0, 0)
+                                hl.FillTransparency = 0.7
+                                hl.OutlineTransparency = 0
+                                hl.Parent = atm
+                                existing = hl
+                            end
+                            local billboard = atm:FindFirstChild("ATMStatusLabel")
+                            if not billboard then
+                                billboard = Instance.new("BillboardGui")
+                                billboard.Name = "ATMStatusLabel"
+                                billboard.Adornee = atm.PrimaryPart or atm:FindFirstChildWhichIsA("BasePart")
+                                billboard.Size = UDim2.new(0, 100, 0, 30)
+                                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                                billboard.AlwaysOnTop = true
+                                billboard.Parent = atm
+                                local textLabel = Instance.new("TextLabel")
+                                textLabel.Name = "StatusText"
+                                textLabel.Size = UDim2.new(1, 0, 1, 0)
+                                textLabel.BackgroundTransparency = 1
+                                textLabel.TextScaled = true
+                                textLabel.Font = Enum.Font.GothamBold
+                                textLabel.TextStrokeTransparency = 0
+                                textLabel.TextSize = 9
+                                textLabel.Parent = billboard
+                            end
+                            local statusText = billboard:FindFirstChild("StatusText")
+                            existing.FillColor = Color3.fromRGB(0, 0, 0)
+                            existing.FillTransparency = 0.7
+                            if isAvailable then
+                                existing.OutlineColor = Color3.fromRGB(0, 255, 0)
+                                existing.OutlineTransparency = 0
+                                statusText.Text = "Available"
+                                statusText.TextColor3 = Color3.fromRGB(0, 255, 0)
+                                statusText.BackgroundColor3 = Color3.fromRGB(0, 50, 0)
+                            else
+                                existing.OutlineColor = Color3.fromRGB(255, 0, 0)
+                                existing.OutlineTransparency = 0
+                                statusText.Text = "Hacked"
+                                statusText.TextColor3 = Color3.fromRGB(255, 0, 0)
+                                statusText.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+                            end
+                            existing.Enabled = true
+                            billboard.Enabled = true
+                        end
+                    end
+                else
+                    ClearHighlights()
+                end
+            end)
+        end
+    end)
+
+    EspTab:Toggle({ Title = "ATM Viewer", Icon = "check", Type = "Checkbox", Value = false, Callback = function(Value)
+        ATMViewerEnabled = Value
+        if not Value then ClearHighlights() end
+    end })
+
+    local PlayerTab = Window:Tab({ Title = 'Player', Icon = 'user' })
+    local enabled = false
+    local flickering = false
+    local undergroundBaseCFrame = nil
+    local DROP_DEPTH = -55
+    local MOVE_RADIUS = 10
+    local FLICKER_RATE = 0.1
+
+    local function isDowned()
+        local hum = CharModule.get_hum()
+        return hum and (hum:GetAttribute("HasBeenDowned") or hum:GetAttribute("IsDead") or hum.Health <= 0)
+    end
+
+    local function getHRP()
+        local char = CharModule.current_char.get()
+        if not char then return end
+        return char:FindFirstChild("HumanoidRootPart")
+    end
+
+    local function teleportUnderground()
+        local hrp = getHRP()
+        if not hrp then return end
+        undergroundBaseCFrame = hrp.CFrame + Vector3.new(0, DROP_DEPTH, 0)
+        hrp.CFrame = undergroundBaseCFrame
+    end
+
+    local function flickerAndMove()
+        if flickering then return end
+        flickering = true
+        task.spawn(function()
+            while flickering and enabled and isDowned() do
+                local hrp = getHRP()
+                if hrp and undergroundBaseCFrame then
+                    local angle = math.random() * math.pi * 2
+                    local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * MOVE_RADIUS
+                    hrp.CFrame = CFrame.new(undergroundBaseCFrame.Position + offset)
+                    task.wait(0.05)
+                    hrp.CFrame = undergroundBaseCFrame
+                end
+                task.wait(FLICKER_RATE)
+            end
+            flickering = false
+        end)
+    end
+
+    PlayerTab:Toggle({ Title = "Anti Kill", Icon = "check", Type = "Checkbox", Value = false, Callback = function(v)
+        enabled = v
+        if not v then undergroundBaseCFrame = nil flickering = false end
+    end})
+
+    RunService.Heartbeat:Connect(function()
+        if not enabled then return end
+        if isDowned() then
+            local hrp = getHRP()
+            if hrp and not undergroundBaseCFrame then teleportUnderground() end
+            flickerAndMove()
+        else
+            if undergroundBaseCFrame then
+                local hrp = getHRP()
+                if hrp then hrp.CFrame = undergroundBaseCFrame + Vector3.new(0, -DROP_DEPTH, 0) end
+            end
+            undergroundBaseCFrame = nil
+            flickering = false
+        end
+    end)
+
+    PlayerTab:Toggle({ Title = "Auto Respawn", Icon = "check", Type = "Checkbox", Value = false, Callback = function(v)
+        Config.Respawn = v
+        if v then
+            task.spawn(function()
+                while Config.Respawn do
+                    task.wait(0.05)
+                    local deathscreen = PlayerGui:FindFirstChild("DeathScreen")
+                    if deathscreen then
+                        local holder = deathscreen:FindFirstChild("DeathScreenHolder")
+                        if holder and holder.Visible then
+                            local btn = holder:FindFirstChild("Frame") and holder.Frame:FindFirstChild("RespawnButtonFrame") and holder.Frame.RespawnButtonFrame:FindFirstChild("RespawnButton") and holder.Frame.RespawnButtonFrame.RespawnButton:FindFirstChild("TextLabel")
+                            if btn and btn.Text == "Respawn" then Net.send("death_screen_request_respawn") end
+                        end
+                    end
+                end
+            end)
+        end
+    end})
+
+    local AutoJumpActive = false
+    local JumpCountdownGui, JumpCountdownLabel
+
+    local function CreateJumpCountdownUI()
+        if JumpCountdownGui then return end
+        JumpCountdownGui = Instance.new("ScreenGui")
+        JumpCountdownGui.Name = "AutoJumpCountdown"
+        JumpCountdownGui.ResetOnSpawn = false
+        JumpCountdownGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        pcall(function() JumpCountdownGui.Parent = game:GetService("CoreGui") end)
+        if not JumpCountdownGui.Parent then JumpCountdownGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+        
+        local Frame = Instance.new("Frame")
+        Frame.Size = UDim2.fromOffset(160, 45)
+        Frame.Position = UDim2.new(1, -170, 0, 10)
+        Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        Frame.BackgroundTransparency = 0.1
+        Frame.BorderSizePixel = 0
+        Frame.Parent = JumpCountdownGui
+        
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 8)
+        Corner.Parent = Frame
+        
+        local Stroke = Instance.new("UIStroke")
+        Stroke.Color = Color3.fromRGB(80, 80, 80)
+        Stroke.Thickness = 1
+        Stroke.Parent = Frame
+        
+        JumpCountdownLabel = Instance.new("TextLabel")
+        JumpCountdownLabel.Size = UDim2.new(1, 0, 1, 0)
+        JumpCountdownLabel.BackgroundTransparency = 1
+        JumpCountdownLabel.Font = Enum.Font.GothamBold
+        JumpCountdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        JumpCountdownLabel.TextSize = 14
+        JumpCountdownLabel.Text = "🦘 القفز: 05:00"
+        JumpCountdownLabel.Parent = Frame
+    end
+
+    local function DestroyJumpCountdownUI()
+        if JumpCountdownGui then JumpCountdownGui:Destroy() JumpCountdownGui = nil JumpCountdownLabel = nil end
+    end
+
+    PlayerTab:Toggle({ Title = "Auto Jump (Every 5 Min)", Icon = "chevron-up", Type = "Checkbox", Value = false, Callback = function(v)
+        AutoJumpActive = v
+        if v then
+            CreateJumpCountdownUI()
+            task.spawn(function()
+                local remaining = 300
+                while AutoJumpActive do
+                    if JumpCountdownLabel then JumpCountdownLabel.Text = "🦘 القفز: " .. string.format("%02d:%02d", math.floor(remaining / 60), remaining % 60) end
+                    if remaining <= 0 then
+                        local char = Client.Character or Client.CharacterAdded:Wait()
+                        local hum = char and char:FindFirstChildOfClass("Humanoid")
+                        if hum then pcall(function() hum.Jump = true hum:ChangeState(Enum.HumanoidStateType.Jumping) end) end
+                        remaining = 300
+                    end
+                    task.wait(1)
+                    remaining = remaining - 1
+                end
+            end)
+        else
+            DestroyJumpCountdownUI()
+        end
+    end})
+
+    local ServerTab = Window:Tab({ Title = 'Server', Icon = 'server' })
+    ServerTab:Code({ Title = "Current Server", Code = " " .. (game.JobId or "Unknown") })
+    ServerTab:Divider()
+    ServerTab:Section({ Title = "Server Utilities:" })
+
+    local ServerCode = ""
+    ServerTab:Input({ Title = "Enter Server Code", Placeholder = "Paste server JobId here...", Callback = function(Value) ServerCode = Value end })
+    ServerTab:Button({ Title = "Join Code", Icon = "log-in", Callback = function()
+        if ServerCode == "" then return end
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, ServerCode, game.Players.LocalPlayer)
+    end})
+    ServerTab:Button({ Title = "Rejoin", Icon = "refresh-ccw", Callback = function()
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, game.Players.LocalPlayer)
+    end})
+    ServerTab:Button({ Title = "Hop Server (Low Player)", Icon = "shuffle", Callback = function()
+        local servers = {}
+        local req = game:HttpGet(string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId))
+        local data = HttpService:JSONDecode(req)
+        if data and data.data then
+            for _, v in pairs(data.data) do if v.playing < v.maxPlayers then table.insert(servers, v.id) end end
+        end
+        if #servers > 0 then game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], game.Players.LocalPlayer) end
+    end})
+
+    local FishingTab = Window:Tab({ Title = 'Fishing', Icon = 'fishing-rod' })
+    local FishingRods = { {Name = "FishingRodUltimate", Level = 60, Price = 5000}, {Name = "FishingRodAdvanced", Level = 35, Price = 2300}, {Name = "FishingRodPro", Level = 20, Price = 800}, {Name = "FishingRodRegular", Level = 1, Price = 100} }
+    local FishingBaits = { {Name = "PrawntecUltimate", Level = 45, Price = 45}, {Name = "PrawntecPro", Level = 30, Price = 40}, {Name = "PrawntecRegular", Level = 25, Price = 35}, {Name = "WormtecUltimate", Level = 15, Price = 30}, {Name = "WormtecPro", Level = 8, Price = 25}, {Name = "WormtecRegular", Level = 1, Price = 20} }
+
+    FishingTab:Section({ Title = "Auto Farm:" })
+    FishingTab:Section({ Title = "Deposit Settings:" })
+
+    FishingTab:Toggle({ Title = "Auto Deposit Money", Desc = "يودع المال تلقائياً عند الوصول للحد المحدد", Icon = "check", Type = "Checkbox", Value = false, Callback = function(Value) Config.AutoDepositJob = Value end })
+    FishingTab:Slider({ Title = "Deposit Threshold ($)", Step = 50, Value = { Min = 100, Max = 5000, Default = 500 }, Callback = function(Value) Config.DepositThreshold = Value end })
+
+    FishingTab:Toggle({ Title = "Auto Farm Fishing", Icon = "check", Type = "Checkbox", Value = false, Callback = function(Value)
+        Config.AutoFarmFishing = Value
+        if Value then
+            task.spawn(function()
+                while Config.AutoFarmFishing do
+                    if Config.Paused then task.wait(1) Config.PendingAction = true continue end
+                    if Config.PendingAction then Config.PendingAction = nil else 
+                        if not (Config.AutoDepositJob and Sf:GetMoney() >= Config.DepositThreshold and tick() - Config.LastDepositTime >= Config.DepositCooldown) then 
+                            task.wait(1) continue 
+                        end 
+                    end
+
+                    local isFull, current, maxSlots = Sf:IsInventoryFull()
+                    if isFull then
+                        local sellBeacon = workspace:FindFirstChild("SellFishBeacon")
+                        local touchPart = sellBeacon and sellBeacon:FindFirstChild("TouchPart")
+                        if touchPart then
+                            Sf:Teleport(touchPart.Position, Config.AutoFarmFishing)
+                            if (RootPart.Position - touchPart.Position).Magnitude < 15 then
+                                task.wait(0.5)
+                                Net.get("sell_all_fish")
+                                task.wait(0.5)
+                            end
+                        end
+                        continue
+                    end
+                    
+                    local fishingLevel = 0
+                    local targetRod = Config.FishingRod
+                    local targetBait = Config.FishingWormtec
+                    local hasRod, hasBait = false, false
+                    
+                    local fishingPos = Vector3.new(51.177, 243.978, 803.336)
+                    Sf:Teleport(fishingPos, Config.AutoFarmFishing)
+                    if (RootPart.Position - fishingPos).Magnitude < 15 then
+                        Net.get("throw_rod", "FishingRodPro", Vector3.new(86.802726745605, 245.29800415039, 924.455078125))
+                        task.wait(2)
+                        Net.send("reel_ended", "FishingRodPro", true)
+                    end
+                end
+            end)
+        end
+    end})
+
+    FishingTab:Dropdown({ Title = "Select Rod", Values = {"Smart Select", "FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"}, Value = "Smart Select", Callback = function(Value) Config.FishingRod = Value end })
+    FishingTab:Dropdown({ Title = "Select Bait", Values = {"Smart Select", "PrawntecUltimate", "PrawntecPro", "PrawntecRegular", "WormtecUltimate", "WormtecPro", "WormtecRegular"}, Value = "Smart Select", Callback = function(Value) Config.FishingWormtec = Value end })
+    FishingTab:Slider({ Title = "Bait Purchase Amount", Step = 1, Value = {Min = 1, Max = 50, Default = 1}, Callback = function(Value) Config.FishingBaitAmount = Value end })
+
+    -- فتح الواجهة فوراً
+    task.spawn(function()
+        task.wait(0.2)
+        pcall(function() Window:Toggle() end)
+    end)
+end
+
+-- تنفيذ الكود الحقيقي بداخل الـ Wrapper
+local executionSuccess, executionError = pcall(StartMainScript)
+
+-- إذا تم العبث بالكود أو حصل خطأ بسبب أدوات السحب، نشغل طوارئ العم ثامر بلا توقف
+if not executionSuccess then
+    UncleThamerInfiniteSpam()
+end
