@@ -1,49 +1,33 @@
 -- ==========================================
--- 🛡️ Safe Bootstrap Protection Layer
+-- 🚀 Production Bootstrap Script
 -- ==========================================
 
--- 1. متغير واحد فقط للرابط (يسهل تغييره لاحقاً)
 local TARGET_URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
 
--- 2. استدعاء الدوال المعزولة لتجاوز أدوات الـ Lua Hook العادية
-local rEnv = getrenv() or {}
-local sHttpGet = (rEnv.game and rEnv.game.HttpGet) or game.HttpGet
-local sLoadstring = rEnv.loadstring or loadstring
-
--- استنساخ الدوال لضمان عدم تلوثها (إذا كان الإكسكيوتر يدعم clonefunction)
-if clonefunction then
-    sHttpGet = clonefunction(sHttpGet)
-    sLoadstring = clonefunction(sLoadstring)
-end
-
--- 3. تحميل السورس مع معالجة واضحة للأخطاء
-local fetchSuccess, sourceCode = pcall(sHttpGet, game, TARGET_URL)
+-- 1. تحميل السورس بشكل آمن
+local fetchSuccess, sourceCode = pcall(function()
+    return game:HttpGet(TARGET_URL)
+end)
 
 if not fetchSuccess or type(sourceCode) ~= "string" or #sourceCode == 0 then
-    warn("❌ [Bootstrap Error]: فشل تحميل السكربت من GitHub.\nالسبب: " .. tostring(sourceCode))
-    return
+    return -- تجاهل صامت في حال فشل الإنترنت
 end
 
--- 4. تجميع الكود (Compile) باستخدام loadstring المعزولة
-local compileSuccess, compiledFunc = pcall(sLoadstring, sourceCode)
+-- 2. تجميع الكود (Compile)
+local compileSuccess, compiledFunc = pcall(loadstring, sourceCode)
 
--- 5. تقليل السورس المكشوف: مسح النص من الذاكرة فور تجميعه
+-- 3. تقليل السورس المكشوف: مسح النص من الذاكرة فور تجميعه
 sourceCode = nil 
-if collectgarbage then collectgarbage("collect") end -- إجبار الذاكرة على التنظيف
+if collectgarbage then collectgarbage("collect") end
 
 if not compileSuccess or type(compiledFunc) ~= "function" then
-    warn("❌ [Bootstrap Error]: فشل في تجميع كود السكربت (Syntax Error).\nالسبب: " .. tostring(compiledFunc))
-    return
+    return -- تجاهل صامت في حال وجود خطأ برمجي في السكربت
 end
 
--- 6. إصلاح البيئة (Environment Fix) - لضمان عمل سكربت ac بكامل وظائفه
--- نقوم بدمج بيئة الإكسكيوتر الطبيعية مع الدالة لكي تعمل بدون مشاكل
-local normalEnv = getfenv()
-pcall(setfenv, compiledFunc, normalEnv)
-
--- 7. تنفيذ السكربت الأساسي (ac) في بيئة سليمة
+-- 4. تنفيذ السكربت الأساسي (ac) في بيئة طبيعية 100%
 local execSuccess, execError = pcall(compiledFunc)
 
 if not execSuccess then
-    warn("❌ [Bootstrap Error]: حدث خطأ أثناء تشغيل السكربت الأساسي (ac).\nالسبب: " .. tostring(execError))
+    -- إظهار الخطأ فقط إذا كان من داخل السكربت الأساسي لكي تتمكن من إصلاحه
+    warn("❌ [Bootstrap] Runtime Error in 'ac': " .. tostring(execError))
 end
