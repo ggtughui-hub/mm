@@ -1,33 +1,39 @@
 -- ==========================================
--- 🚀 Production Bootstrap Script
+-- 🐛 Debug Bootstrap Script
 -- ==========================================
 
-local TARGET_URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+print("[1] Bootstrap Started")
 
--- 1. تحميل السورس بشكل آمن
+local TARGET_URL = "https://raw.githubusercontent.com/ggtughui-hub/mm/refs/heads/main/ac"
+print("[2] HTTP Request Started to: " .. TARGET_URL)
+
 local fetchSuccess, sourceCode = pcall(function()
+    -- استخدام التوقيع الصحيح لـ HttpGet
     return game:HttpGet(TARGET_URL)
 end)
 
 if not fetchSuccess or type(sourceCode) ~= "string" or #sourceCode == 0 then
-    return -- تجاهل صامت في حال فشل الإنترنت
+    warn("❌ [Debug] HTTP Request Failed. Reason: " .. tostring(sourceCode))
+    return
 end
+print("[3] HTTP Request Success")
 
--- 2. تجميع الكود (Compile)
+print("[4] Source Length: " .. #sourceCode .. " characters")
+print("[5] Compile Started")
+
 local compileSuccess, compiledFunc = pcall(loadstring, sourceCode)
 
--- 3. تقليل السورس المكشوف: مسح النص من الذاكرة فور تجميعه
-sourceCode = nil 
-if collectgarbage then collectgarbage("collect") end
-
 if not compileSuccess or type(compiledFunc) ~= "function" then
-    return -- تجاهل صامت في حال وجود خطأ برمجي في السكربت
+    warn("❌ [Debug] Compile Failed (Syntax Error). Reason: " .. tostring(compiledFunc))
+    return
 end
+print("[6] Compile Success")
 
--- 4. تنفيذ السكربت الأساسي (ac) في بيئة طبيعية 100%
+print("[7] Execution Started")
 local execSuccess, execError = pcall(compiledFunc)
 
 if not execSuccess then
-    -- إظهار الخطأ فقط إذا كان من داخل السكربت الأساسي لكي تتمكن من إصلاحه
-    warn("❌ [Bootstrap] Runtime Error in 'ac': " .. tostring(execError))
+    warn("❌ [8] Runtime Error in 'ac': " .. tostring(execError))
+else
+    print("[8] Execution Finished Successfully!")
 end
