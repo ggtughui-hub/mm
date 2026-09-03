@@ -1,1 +1,1490 @@
+local ScriptCode = [========[
+if getgenv().MercyHubLoaded then return end
+getgenv().MercyHubLoaded = true
 
+-- ==========================================
+-- 🎮 Auto Play & Skip (بدون قائمة - مفعّل تلقائي)
+-- ==========================================
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local CoreGui = game:GetService("CoreGui")
+    local player = Players.LocalPlayer
+
+    local function isActuallyVisible(obj)
+        if not obj or obj.Parent == nil then return false end
+        if obj:IsA("GuiObject") and not obj.Visible then return false end
+        local current = obj.Parent
+        while current and current ~= game do
+            if current:IsA("GuiObject") and not current.Visible then return false end
+            if current:IsA("ScreenGui") and current.Enabled == false then return false end
+            current = current.Parent
+        end
+        return true
+    end
+
+    local function isValid(obj)
+        if obj == nil then return false end
+        local ok, parent = pcall(function() return obj.Parent end)
+        if not ok or parent == nil then return false end
+        return true
+    end
+
+    local function fireButton(btn)
+        if not isValid(btn) or not isActuallyVisible(btn) then return false end
+        pcall(function()
+            if firesignal then
+                firesignal(btn.MouseButton1Click)
+                firesignal(btn.Activated)
+            end
+            if getconnections then
+                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do conn:Fire() end
+                for _, conn in ipairs(getconnections(btn.Activated)) do conn:Fire() end
+            end
+        end)
+        return true
+    end
+
+    local FoundPlayBtn = nil
+    local FoundAvatarSkipBtn = nil
+
+    task.spawn(function()
+        while true do
+            pcall(function()
+                local holders = { player:FindFirstChild("PlayerGui") }
+                pcall(function() table.insert(holders, CoreGui) end)
+                local newPlay, newAvatarSkip = nil, nil
+                for _, holder in ipairs(holders) do
+                    if holder then
+                        for _, obj in ipairs(holder:GetDescendants()) do
+                            if (obj:IsA("TextButton") or obj:IsA("ImageButton")) and isActuallyVisible(obj) then
+                                local nameUp = string.upper(obj.Name)
+                                if nameUp == "PLAYBUTTON" then
+                                    newPlay = obj
+                                elseif nameUp == "AVATARMENUSKIPBUTTON" then
+                                    newAvatarSkip = obj
+                                end
+                            end
+                        end
+                    end
+                end
+                FoundPlayBtn = newPlay
+                FoundAvatarSkipBtn = newAvatarSkip
+            end)
+            task.wait(1)
+        end
+    end)
+
+    while true do
+        pcall(function()
+            if FoundPlayBtn then fireButton(FoundPlayBtn) end
+            if FoundAvatarSkipBtn then fireButton(FoundAvatarSkipBtn) end
+        end)
+        task.wait(0.5)
+    end
+end)
+
+for _, obj in pairs(workspace:GetDescendants()) do
+    if obj:IsA("Model") and obj.Name == "DoorSystem" then
+        obj:Destroy()
+    end
+end
+
+if not game:IsLoaded() then
+    repeat
+        task.wait()
+    until game:IsLoaded()
+end
+if not (game.PlaceId == 104715542330896 or game.PlaceId == 97556409405464) then
+    return
+end
+
+local RS = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+
+pcall(function()
+    local TransitionModule = require(RS.Modules.Game.UI.TransitionUI)
+    local old_transition = TransitionModule.transition
+    TransitionModule.transition = function(p_in, p_wait, p_out, noLogo)
+        return result
+    end
+end)
+
+pcall(function()
+    local CharCreator = require(RS.Modules.Game.CharacterCreator.CharacterCreator)
+    if CharCreator.start then
+        local old_start = CharCreator.start
+        CharCreator.start = function(...)
+            while true do
+                task.wait(1)
+            end
+        end
+    end
+end)
+
+if getgenv then getgenv().identifyexecutor = nil end
+if getfenv then
+    local env = getfenv()
+    env.identifyexecutor = nil
+end
+
+local v_u_1 = {}
+local v2 = game.ReplicatedStorage:WaitForChild("Remotes")
+local v_u_3 = {["send"] = v2:WaitForChild("Send"), ["get"] = v2:WaitForChild("Get")}
+local v_u_4 = {["event"] = 0, ["func"] = 0}
+local v_u_5 = {}
+local v_u_6 = false
+local v_u_7 = {}
+
+function v_u_1.on_connect(p8)
+    if v_u_6 then p8() else v_u_7[#v_u_7 + 1] = p8 end
+end
+
+function v_u_1.hook(p_u_9, p_u_10)
+    if not p_u_10 then error("Function nil for hook " .. p_u_9) end
+    if v_u_6 then
+        if v_u_5[p_u_9] then warn("Overwriting hook '" .. p_u_9 .. "'.") else v_u_5[p_u_9] = p_u_10 end
+    else
+        v_u_1.on_connect(function() v_u_1.hook(p_u_9, p_u_10) end)
+        return
+    end
+end
+
+task.wait(0.1)
+local v_u_20 = v_u_3.send
+local v_u_21 = v_u_3.send.FireServer
+function v_u_1.send(p22, ...)
+    v_u_4.event = v_u_4.event + 1
+    v_u_21(v_u_20, v_u_4.event, p22, ...)
+end
+
+local v_u_23 = v_u_3.get
+local v_u_24 = v_u_3.get.InvokeServer
+function v_u_1.get(p25, ...)
+    v_u_4.func = v_u_4.func + 1
+    return v_u_24(v_u_23, v_u_4.func, p25, ...)
+end
+
+task.wait(0.1)
+local function v_u_29()
+    v_u_3.send.OnClientEvent:connect(function(p26, ...)
+        if v_u_5[p26] then v_u_5[p26](...) else error("Invalid hook '" .. p26 .. "' fired!", 0) end
+    end)
+    function v_u_3.get.OnClientInvoke(p27, ...)
+        if v_u_5[p27] then return v_u_5[p27](...) end
+        error("Invalid hook '" .. p27 .. "' invoked!", 0)
+    end
+    if not pcall(function() for v28 = 1, #v_u_7 do v_u_7[v28]() end end) then
+        pcall(function() v_u_1.send("issue", "On connect failed for client") end)
+    end
+end
+
+function v_u_1.initiate() end
+function v_u_1.loaded()
+    function v_u_3.get.OnClientInvoke(p30)
+        if p30 == "connect" then
+            v_u_6 = true
+            v_u_29()
+            return true
+        end
+    end
+    v_u_1.hook("ping", function() return true end)
+end
+
+print("bypassed")
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PathfindingService = game:GetService("PathfindingService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+
+local Net = require(ReplicatedStorage.Modules.Core.Net)
+local Data_upvr = require(ReplicatedStorage.Modules.Core.Data)
+local XPFormula_upvr = require(ReplicatedStorage.Modules.Game.Skills.XPFormula)
+local ItemUtils = require(ReplicatedStorage.Modules.Game.Inventory.ItemUtils)
+local CharModule = require(ReplicatedStorage.Modules.Core.Char)
+
+local Client = Players.LocalPlayer
+local Character = Client.Character or Client.CharacterAdded:Wait()
+local PlayerGui = Client.PlayerGui
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+local UserId = Client.UserId
+local Backpack = Client:WaitForChild("Backpack")
+
+-- ==========================================
+-- ⭐ نظام الهوب التلقائي عند الموت (Auto-Hop Wrapper)
+-- ==========================================
+local function forceQueue()
+    local QueueFunction = queue_on_teleport or (syn and syn.queue_on_teleport) or queueonteleport
+    if QueueFunction then
+        pcall(function()
+            local src = getgenv().TotalLevelScriptSource
+            if src then
+                local escapedSrc = string.format("%q", src)
+                local codeToRun = 'getgenv().TotalLevelScriptSource = ' .. escapedSrc .. '; getgenv().TotalLevel_HopInitiated = true; loadstring(getgenv().TotalLevelScriptSource)()'
+                QueueFunction(codeToRun)
+            end
+        end)
+    end
+end
+
+getgenv().SafeTeleport = function(isRejoin, targetServerId)
+    forceQueue()
+    getgenv().TotalLevelRunningLock = nil
+    pcall(function()
+        local servers = {}
+        local req = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
+        local decoded = HttpService:JSONDecode(req)
+        if decoded and decoded.data then
+            for _, srv in pairs(decoded.data) do
+                if srv.playing < srv.maxPlayers then
+                    table.insert(servers, srv.id)
+                end
+            end
+        end
+        if #servers > 0 then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], Client)
+        else
+            TeleportService:Teleport(game.PlaceId, Client)
+        end
+    end)
+end
+
+-- ==========================================
+-- ⚔️ هوب فقط إذا قتلك لاعب (شاشة الموت + رسالة فيها اسم)
+-- ==========================================
+local lastKillHopTime = 0
+local function isPlayerKillMessage(text)
+    if not text or #text < 5 then return false end
+    local lower = string.lower(text)
+    local phrases = {"folded you","killed you","eliminated you","destroyed you","wiped you","owned you","rekt you","slain you","murdered you","took you out","finished you"}
+    for _, p in ipairs(phrases) do
+        if string.find(lower, p, 1, true) then return true end
+    end
+    return false
+end
+local function tryHopIfKilledByPlayer()
+    if tick() - lastKillHopTime < 10 then return end
+    local deathscreen = PlayerGui:FindFirstChild("DeathScreen")
+    if not deathscreen then return end
+    local holder = deathscreen:FindFirstChild("DeathScreenHolder")
+    if not holder or not holder.Visible then return end
+    for _, gui in ipairs(deathscreen:GetDescendants()) do
+        if gui:IsA("TextLabel") or gui:IsA("TextButton") then
+            local text = gui.Text
+            if text and isPlayerKillMessage(text) then
+                lastKillHopTime = tick()
+                print("⚔️ قتلك لاعب! (" .. text .. ") → هوب سيرفر")
+                task.wait(0.3)
+                getgenv().SafeTeleport(false)
+                return
+            end
+        end
+    end
+end
+task.spawn(function()
+    while true do
+        task.wait(0.6)
+        pcall(tryHopIfKilledByPlayer)
+    end
+end)
+
+Client.CharacterAdded:Connect(function(newCharacter)
+    Character = newCharacter
+    Humanoid = Character:WaitForChild('Humanoid')
+    RootPart = Character:WaitForChild('HumanoidRootPart')
+    Backpack = Client:WaitForChild("Backpack")
+end)
+
+-- ==========================================
+-- 🌐 نظام ويب هوك ديسكورد للسمكات النادرة
+-- ==========================================
+local DiscordWebhookUrl = "https://discord.com/api/webhooks/1534559291992838327/rvlpM3i7kBaO-hBA1gShgvkOa5oR1fs5Un1lbo2UErBlB7w1dIaNA32sgyyIdDXOM_KA"
+local reportedFishUIDs = {}
+
+local function SendWebhook(fishName, fishUID)
+    if reportedFishUIDs[fishUID] then return end
+    local data = {
+        ["content"] = "🎣 **تم صيد سمكة نادرة!**\n🐟 **" .. fishName .. "**\n👤 **اللاعب:** " .. Client.Name,
+        ["username"] = "Mercy Hub"
+    }
+    local body = HttpService:JSONEncode(data)
+    local requestFunc = request or http_request or syn.request or (fluxus and fluxus.request)
+    if requestFunc then
+        local success, err = pcall(function()
+            requestFunc({Url = DiscordWebhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = body})
+        end)
+        if success then
+            reportedFishUIDs[fishUID] = true
+            print("✅ تم إرسال إشعار " .. fishName .. " إلى ديسكورد!")
+        end
+    end
+end
+
+local LastFishCount = {}
+local function GetFishNamesFromInventory()
+    local fishList = {}
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not Holding then return fishList end
+    for _, v in pairs(Holding:GetChildren()) do
+        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+            local itemType = v:GetAttribute("ItemType")
+            if itemType and string.lower(tostring(itemType)) == "fish" then
+                local nameLbl = v:FindFirstChild("ItemName")
+                if nameLbl and nameLbl.Text and nameLbl.Text ~= "" then table.insert(fishList, nameLbl.Text) end
+            end
+        end
+    end
+    return fishList
+end
+
+local function GetNewFish(oldList, newList)
+    local newFish = {}
+    local oldMap = {}
+    for _, name in ipairs(oldList) do oldMap[name] = (oldMap[name] or 0) + 1 end
+    for _, name in ipairs(newList) do
+        if oldMap[name] then
+            oldMap[name] = oldMap[name] - 1
+            if oldMap[name] < 0 then table.insert(newFish, name) end
+        else
+            table.insert(newFish, name)
+        end
+    end
+    return newFish
+end
+
+local function IsRareFish(fishName) return fishName == "Marlin" or fishName == "Sailfish" end
+getgenv().LastRareFishTime = getgenv().LastRareFishTime or tick()
+
+-- عداد 25 دقيقة ظاهر أعلى يمين الشاشة (صيد 70)
+task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")
+    pcall(function()
+        if CoreGui:FindFirstChild("RareFishTimerUI") then CoreGui.RareFishTimerUI:Destroy() end
+        if Client.PlayerGui:FindFirstChild("RareFishTimerUI") then Client.PlayerGui.RareFishTimerUI:Destroy() end
+    end)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "RareFishTimerUI"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    local ok = pcall(function() gui.Parent = CoreGui end)
+    if not ok then gui.Parent = Client:WaitForChild("PlayerGui") end
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 200, 0, 52)
+    frame.Position = UDim2.new(1, -215, 0, 12)
+    frame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+    frame.BorderSizePixel = 0
+    frame.Visible = false
+    frame.Parent = gui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = frame
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(0, 255, 128)
+    stroke.Thickness = 1.5
+    stroke.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -10, 0, 18)
+    title.Position = UDim2.new(0, 5, 0, 4)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 12
+    title.TextColor3 = Color3.fromRGB(180, 255, 200)
+    title.Text = "⏱️ صيد 70 — ذهبية"
+    title.TextXAlignment = Enum.TextXAlignment.Right
+    title.Parent = frame
+
+    local timeLbl = Instance.new("TextLabel")
+    timeLbl.Size = UDim2.new(1, -10, 0, 26)
+    timeLbl.Position = UDim2.new(0, 5, 0, 22)
+    timeLbl.BackgroundTransparency = 1
+    timeLbl.Font = Enum.Font.GothamBold
+    timeLbl.TextSize = 18
+    timeLbl.TextColor3 = Color3.fromRGB(0, 255, 128)
+    timeLbl.Text = "25:00"
+    timeLbl.TextXAlignment = Enum.TextXAlignment.Right
+    timeLbl.Parent = frame
+
+    local RARE_LIMIT = 1500 -- 25 دقيقة
+    while gui.Parent do
+        task.wait(0.5)
+        local show = getgenv().RareFishTimerStarted == true
+        frame.Visible = show
+        if show then
+            local last = getgenv().LastRareFishTime or tick()
+            local left = math.max(0, RARE_LIMIT - (tick() - last))
+            local mins = math.floor(left / 60)
+            local secs = math.floor(left % 60)
+            timeLbl.Text = string.format("%02d:%02d", mins, secs)
+            if left <= 60 then
+                timeLbl.TextColor3 = Color3.fromRGB(255, 80, 80)
+                stroke.Color = Color3.fromRGB(255, 80, 80)
+            elseif left <= 180 then
+                timeLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
+                stroke.Color = Color3.fromRGB(255, 200, 50)
+            else
+                timeLbl.TextColor3 = Color3.fromRGB(0, 255, 128)
+                stroke.Color = Color3.fromRGB(0, 255, 128)
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        local currentFish = GetFishNamesFromInventory()
+        local newFish = GetNewFish(LastFishCount, currentFish)
+        for _, fishName in ipairs(newFish) do
+            if IsRareFish(fishName) then
+                print("🐟 تم اكتشاف سمكة نادرة: " .. fishName)
+                getgenv().LastRareFishTime = tick()
+                SendWebhook(fishName, "rare_" .. fishName .. "_" .. tostring(os.time()) .. "_" .. math.random(1000, 9999))
+            end
+        end
+        LastFishCount = currentFish
+    end
+end)
+
+-- ==========================================
+-- 🎮 نظام Auto Play & Skip (بدون GUI)
+-- ==========================================
+task.spawn(function()
+    local function isActuallyVisible(obj)
+        if not obj or obj.Parent == nil then return false end
+        if obj:IsA("GuiObject") and not obj.Visible then return false end
+        local current = obj.Parent
+        while current and current ~= game do
+            if current:IsA("GuiObject") and not current.Visible then return false end
+            if current:IsA("ScreenGui") and current.Enabled == false then return false end
+            current = current.Parent
+        end
+        return true
+    end
+
+    while true do
+        pcall(function()
+            local playBtn, skipBtn = nil, nil
+            local holders = {PlayerGui, game:GetService("CoreGui")}
+            for _, holder in ipairs(holders) do
+                if holder then
+                    for _, obj in ipairs(holder:GetDescendants()) do
+                        if (obj:IsA("TextButton") or obj:IsA("ImageButton")) and isActuallyVisible(obj) then
+                            local nameUp = string.upper(obj.Name)
+                            if nameUp == "PLAYBUTTON" then playBtn = obj
+                            elseif nameUp == "AVATARMENUSKIPBUTTON" then skipBtn = obj end
+                        end
+                    end
+                end
+            end
+            if playBtn then
+                if firesignal then firesignal(playBtn.MouseButton1Click) firesignal(playBtn.Activated) end
+                if getconnections then
+                    for _, conn in ipairs(getconnections(playBtn.MouseButton1Click)) do conn:Fire() end
+                    for _, conn in ipairs(getconnections(playBtn.Activated)) do conn:Fire() end
+                end
+            end
+            if skipBtn then
+                if firesignal then firesignal(skipBtn.MouseButton1Click) firesignal(skipBtn.Activated) end
+                if getconnections then
+                    for _, conn in ipairs(getconnections(skipBtn.MouseButton1Click)) do conn:Fire() end
+                    for _, conn in ipairs(getconnections(skipBtn.Activated)) do conn:Fire() end
+                end
+            end
+        end)
+        task.wait(0.5)
+    end
+end)
+
+local Config = {
+    AutoFishing = false,
+    StopWalking = false,
+    Running = false,
+    Paused = false,
+    FishingRod = "Smart Select",
+    FishingWormtec = "Smart Select",
+    FishingBaitAmount = 200,
+    AntiCheatHits = 0,
+    Respawn = false
+}
+
+local Sf = {}
+
+do
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name == "DoorSystem" or v.name == "BasementDoor" then
+            for _, x in ipairs(v:GetDescendants()) do
+                if x:IsA('BasePart') then
+                    x.CanCollide = false
+                    if not x:FindFirstChildOfClass("PathfindingModifier") then
+                        local modifier = Instance.new("PathfindingModifier")
+                        modifier.Label = "DoorArea"
+                        modifier.PassThrough = true
+                        modifier.Parent = x
+                    end
+                end
+            end
+        end
+        if v.Name == "VehicleBlockers" then v:Destroy() end
+    end
+end
+
+function Sf:GetFishingLevel()
+    local fishingXP = 0
+    local foundKey = nil
+    for key, val in pairs(Data_upvr.xp) do
+        if string.lower(key) == "fishing" or string.find(string.lower(key), "fish") then
+            fishingXP = val
+            foundKey = key
+            break
+        end
+    end
+    if foundKey then
+        local level = XPFormula_upvr.xp_to_level(fishingXP)
+        return level or 1
+    end
+    return 1
+end
+
+function Sf:GetTotalLevel()
+    if Data_upvr.xp and Data_upvr.xp.total_level then
+        local total_xp = Data_upvr.xp.total_level
+        local total_level = XPFormula_upvr.xp_to_level(total_xp)
+        return total_level or 0
+    end
+    return 0
+end
+
+function Sf:GetMoney()
+    local raw = PlayerGui.TopRightHud.Holder.Frame.MoneyTextLabel.Text
+    local stripped = raw:match("%$([%d,]+)")
+    if not stripped then return 0 end
+    return tonumber((stripped:gsub(",", ""))) or 0
+end
+
+function Sf:ATMMoney()
+    for _, v in ipairs(PlayerGui:GetDescendants()) do
+        if v:IsA("TextLabel") and string.find(v.Text, "Bank Balance") then
+            local stripped = v.Text:match("%$([%d,]+)")
+            if stripped then return tonumber((stripped:gsub(",", ""))) or 0 end
+            return tonumber(v.Text:match("%$(%d+)")) or 0
+        end
+    end
+    return 0
+end
+
+function Sf:GetInfo(w)
+    local amount = 0
+    local IsHaving = false
+    local Uid = nil
+    local Using = false
+    local Items = PlayerGui.Items
+    local Holding = Items:FindFirstChild('ItemsHolder').ItemsScrollingFrame
+    for _, v in pairs(Holding:GetChildren()) do
+        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+            local itemName = v:FindFirstChild("ItemName")
+            if itemName and itemName.Text == w then
+                Uid = v.Name
+                amount = amount + 1
+                IsHaving = true
+                Using = v:FindFirstChild('ItemEquipped').Visible
+            end
+        end
+    end
+    return {amount, IsHaving, Uid, Using}
+end
+
+function Sf:Ac(...) return Net.send(...) end
+
+function Sf:ForceStop()
+    if Config.Running then
+        Config.StopWalking = true
+        task.wait()
+        if Config.StopWalking then
+            task.wait()
+            Config.StopWalking = false
+        end
+    end
+end
+
+-- ==========================================
+-- 🚶 نظام المشي المعدل (بدون سيارات)
+-- ==========================================
+function Sf:WalkTo(destination, value)
+    if not destination then return false end
+    Config.StopWalking = false
+    Config.Running = true
+    
+    local char = Client.Character or Client.CharacterAdded:Wait()
+    local rootPart = char:WaitForChild("HumanoidRootPart")
+    local humanoid = char:WaitForChild("Humanoid")
+    
+    if humanoid.Sit then
+        pcall(function() Net.get("exit_seat") end)
+        task.wait(0.3)
+    end
+    
+    local path = PathfindingService:CreatePath({
+        AgentCanJump = true,
+        AgentJumpHeight = 2.5,
+        AgentHeight = 8,
+        AgentRadius = 2.5,
+        AgentMaxSlope = 90,
+        Costs = {BlockedNode = 50, DoorArea = 1}
+    })
+    
+    local success = pcall(function() 
+        path:ComputeAsync(rootPart.Position, destination) 
+    end)
+    
+    if not success or path.Status ~= Enum.PathStatus.Success then
+        Config.Running = false
+        return false
+    end
+    
+    local waypoints = path:GetWaypoints()
+    for _, wp in pairs(waypoints) do
+        if Config.Paused or not Config.AutoFishing then 
+            Config.Running = false
+            return false 
+        end
+        
+        local offsetY = (wp.Action == Enum.PathWaypointAction.Jump) and 10 or 4
+        local targetPos = wp.Position + Vector3.new(0, offsetY, 0)
+        local startPos = rootPart.Position
+        local dir = (targetPos - startPos).Unit
+        local dist = (targetPos - startPos).Magnitude
+        local movedDist = 0
+        local speed = 34
+        local startTime = tick()
+        
+        while movedDist < dist and not Config.StopWalking and Config.AutoFishing do
+            task.wait()
+            Config.Running = true
+            if Config.Paused or Config.StopWalking or not Config.AutoFishing or humanoid.Health <= 0 then
+                Config.Running = false
+                break
+            end
+            local elapsedTime = tick() - startTime
+            movedDist = math.min(elapsedTime * speed, dist)
+            local newPos = startPos + dir * movedDist
+            if humanoid.Sit then 
+                pcall(function() Net.get("exit_seat") end)
+                task.wait(0.1)
+            end
+            rootPart:PivotTo(CFrame.new(newPos))
+            Sf:Ac("set_sprinting_1", true)
+        end
+        if Config.StopWalking or not Config.AutoFishing then break end
+    end
+    
+    Config.Running = false
+    return true
+end
+
+-- ==========================================
+-- ⭐ دالة فحص المخزون (الحد 200)
+-- ==========================================
+function Sf:IsInventoryFull()
+    local totalLevel = self:GetTotalLevel() or 0
+    local maxSlots = 15
+    if totalLevel >= 8 then
+        maxSlots = 200
+    end
+
+    local currentCount = 0
+    if ItemUtils and Data_upvr then
+        pcall(function()
+            ItemUtils.iterate_through_items(Data_upvr, function(item)
+                if item and item.location == "hand" then
+                    currentCount = currentCount + 1
+                end
+            end)
+        end)
+    end
+
+    local isFull = currentCount >= maxSlots
+    return isFull, currentCount, maxSlots
+end
+
+local function SetupNotificationMonitor()
+    local SendRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Send")
+    SendRemote.OnClientEvent:Connect(function(eventName, ...)
+        if eventName == "notification" then
+            local args = {...}
+            local message = args[2] or ""
+            if message:find("Anti noclip triggered") or message:find("Teleport detected") then
+                if Config.AutoFishing then
+                    task.spawn(function()
+                        Config.Paused = true
+                        Config.StopWalking = true
+                        Config.Running = false
+                        Config.AntiCheatHits = Config.AntiCheatHits + 1
+                        task.wait(1)
+                        Config.Paused = false
+                    end)
+                end
+            end
+        end
+    end)
+end
+SetupNotificationMonitor()
+
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+local Window = WindUI:CreateWindow({
+    Title = "Mercy Hub | V2",
+    Icon = "rbxassetid://118194721156015",
+    Author = "Fishing System",
+    Folder = "MercyHub_"..Client.Name,
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+    Transparent = true, Theme = "Dark", Resizable = true, SideBarWidth = 200,
+    BackgroundImageTransparency = 0.42, HideSearchBar = true, ScrollBarEnabled = false,
+    User = {
+        Enabled = true, Anonymous = false, Name = Client.Name,
+        Image = "rbxthumb://type=AvatarHeadShot&id=" .. Client.UserId .. "&w=150&h=150",
+        Callback = function() end,
+    },
+})
+
+Window:EditOpenButton({ Enabled = false })
+
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "WindUI_Toggle"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
+
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.Size = UDim2.fromOffset(40, 40)
+ToggleBtn.Position = UDim2.new(0.5, -20, 0, 10)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+ToggleBtn.BackgroundTransparency = 0
+ToggleBtn.Image = "rbxassetid://118194721156015"
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
+ToggleBtn.AutoButtonColor = false
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 10)
+Corner.Parent = ToggleBtn
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    ToggleBtn:TweenSize(UDim2.fromOffset(44, 44), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true, function()
+        ToggleBtn:TweenSize(UDim2.fromOffset(40, 40), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
+    end)
+    Window:Toggle()
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.T then Window:Toggle() end
+end)
+
+local EspTab = Window:Tab({ Title = 'Esp', Icon = 'eye' })
+EspTab:Section({ Title = 'ATM Viewer:' })
+local ATMViewerEnabled = false
+local function GetAllATMForViewer()
+    local atms = {}
+    local atmFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Props") and workspace.Map.Props:FindFirstChild("ATMs")
+    if atmFolder then
+        for _, atm in pairs(atmFolder:GetChildren()) do
+            if atm.Name == "ATM" and atm:IsA("Model") then table.insert(atms, atm) end
+        end
+    end
+    return atms
+end
+local function ClearHighlights()
+    for _, atm in pairs(GetAllATMForViewer()) do
+        local hl = atm:FindFirstChild("ATMViewerHighlight")
+        if hl then hl:Destroy() end
+        local billboard = atm:FindFirstChild("ATMStatusLabel")
+        if billboard then billboard:Destroy() end
+    end
+end
+local function IsATMAvailable(atm)
+    local keys = {}
+    for k in pairs(atm:GetAttributes()) do table.insert(keys, k) end
+    table.sort(keys)
+    if keys[3] and atm:GetAttribute(keys[3]) == false then return true end
+    return false
+end
+task.spawn(function()
+    while task.wait(0) do
+        pcall(function()
+            if ATMViewerEnabled then
+                local AllATM = GetAllATMForViewer()
+                for _, atm in pairs(AllATM) do
+                    if atm:IsA("Model") then
+                        local isAvailable = IsATMAvailable(atm)
+                        local existing = atm:FindFirstChild("ATMViewerHighlight")
+                        if not existing then
+                            local hl = Instance.new("Highlight")
+                            hl.Name = "ATMViewerHighlight"
+                            hl.Adornee = atm
+                            hl.FillColor = Color3.fromRGB(0, 0, 0)
+                            hl.FillTransparency = 0.7
+                            hl.OutlineTransparency = 0
+                            hl.Parent = atm
+                            existing = hl
+                        end
+                        local billboard = atm:FindFirstChild("ATMStatusLabel")
+                        if not billboard then
+                            billboard = Instance.new("BillboardGui")
+                            billboard.Name = "ATMStatusLabel"
+                            billboard.Adornee = atm.PrimaryPart or atm:FindFirstChildWhichIsA("BasePart")
+                            billboard.Size = UDim2.new(0, 100, 0, 30)
+                            billboard.StudsOffset = Vector3.new(0, 2, 0)
+                            billboard.AlwaysOnTop = true
+                            billboard.Parent = atm
+                            local textLabel = Instance.new("TextLabel")
+                            textLabel.Name = "StatusText"
+                            textLabel.Size = UDim2.new(1, 0, 1, 0)
+                            textLabel.BackgroundTransparency = 1
+                            textLabel.TextScaled = true
+                            textLabel.Font = Enum.Font.GothamBold
+                            textLabel.TextStrokeTransparency = 0
+                            textLabel.TextSize = 9
+                            textLabel.Parent = billboard
+                            local corner = Instance.new("UICorner")
+                            corner.CornerRadius = UDim.new(0, 8)
+                            corner.Parent = textLabel
+                        end
+                        local statusText = billboard:FindFirstChild("StatusText")
+                        existing.FillColor = Color3.fromRGB(0, 0, 0)
+                        existing.FillTransparency = 0.7
+                        if isAvailable then
+                            existing.OutlineColor = Color3.fromRGB(0, 255, 0)
+                            existing.OutlineTransparency = 0
+                            statusText.Text = "Available"
+                            statusText.TextColor3 = Color3.fromRGB(0, 255, 0)
+                            statusText.BackgroundColor3 = Color3.fromRGB(0, 50, 0)
+                        else
+                            existing.OutlineColor = Color3.fromRGB(255, 0, 0)
+                            existing.OutlineTransparency = 0
+                            statusText.Text = "Hacked"
+                            statusText.TextColor3 = Color3.fromRGB(255, 0, 0)
+                            statusText.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+                        end
+                        existing.Enabled = true
+                        billboard.Enabled = true
+                    end
+                end
+            else
+                ClearHighlights()
+            end
+        end)
+    end
+end)
+EspTab:Toggle({
+    Title = "ATM Viewer", Icon = "check", Type = "Checkbox", Value = false,
+    Flag = "ATMViewer",
+    Callback = function(Value)
+        ATMViewerEnabled = Value
+        if not Value then ClearHighlights() end
+    end,
+})
+
+local PlayerTab = Window:Tab({ Title = 'Player', Icon = 'user' })
+local enabled = false
+local flickering = false
+local undergroundBaseCFrame = nil
+local DROP_DEPTH = -55
+local MOVE_RADIUS = 10
+local FLICKER_RATE = 0.1
+
+local function isDowned()
+    local hum = CharModule.get_hum()
+    return hum and (hum:GetAttribute("HasBeenDowned") or hum:GetAttribute("IsDead") or hum.Health <= 0)
+end
+local function getHRP()
+    local char = CharModule.current_char.get()
+    if not char then return end
+    return char:FindFirstChild("HumanoidRootPart")
+end
+local function teleportUnderground()
+    local hrp = getHRP()
+    if not hrp then return end
+    local original = hrp.CFrame
+    undergroundBaseCFrame = original + Vector3.new(0, DROP_DEPTH, 0)
+    hrp.CFrame = undergroundBaseCFrame
+end
+local function flickerAndMove()
+    if flickering then return end
+    flickering = true
+    task.spawn(function()
+        while flickering and enabled and isDowned() do
+            local hrp = getHRP()
+            if hrp and undergroundBaseCFrame then
+                local angle = math.random() * math.pi * 2
+                local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * MOVE_RADIUS
+                local randomPos = undergroundBaseCFrame.Position + offset
+                hrp.CFrame = CFrame.new(randomPos)
+                task.wait(0.05)
+                hrp.CFrame = undergroundBaseCFrame
+            end
+            task.wait(FLICKER_RATE)
+        end
+        flickering = false
+    end)
+end
+PlayerTab:Toggle({
+    Title = "Anti Kill", Icon = "check", Type = "Checkbox", Value = false,
+    Flag = "AntiKill",
+    Callback = function(v)
+        enabled = v
+        if not v then
+            undergroundBaseCFrame = nil
+            flickering = false
+        end
+    end
+})
+RunService.Heartbeat:Connect(function()
+    if not enabled then return end
+    if isDowned() then
+        local hrp = getHRP()
+        if hrp and not undergroundBaseCFrame then teleportUnderground() end
+        flickerAndMove()
+    else
+        if undergroundBaseCFrame then
+            local hrp = getHRP()
+            if hrp then hrp.CFrame = undergroundBaseCFrame + Vector3.new(0, -DROP_DEPTH, 0) end
+        end
+        undergroundBaseCFrame = nil
+        flickering = false
+    end
+end)
+PlayerTab:Toggle({
+    Title = "Auto Respawn", Icon = "check", Type = "Checkbox", Value = false,
+    Flag = "AutoRespawn",
+    Callback = function(v)
+        Config.Respawn = v
+        if v then
+            task.spawn(function()
+                while Config.Respawn do
+                    task.wait(0.05)
+                    local deathscreen = PlayerGui:FindFirstChild("DeathScreen")
+                    if deathscreen then
+                        local holder = deathscreen:FindFirstChild("DeathScreenHolder")
+                        if holder and holder.Visible then
+                            local btn = holder:FindFirstChild("Frame") and
+                                        holder.Frame:FindFirstChild("RespawnButtonFrame") and
+                                        holder.Frame.RespawnButtonFrame:FindFirstChild("RespawnButton") and
+                                        holder.Frame.RespawnButtonFrame.RespawnButton:FindFirstChild("TextLabel")
+                            if btn and btn.Text == "Respawn" then
+                                Net.send("death_screen_request_respawn")
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+})
+
+local antiAfkConnection = nil
+PlayerTab:Toggle({
+    Title = "Anti-AFK", Icon = "shield", Type = "Checkbox", Value = true,
+    Flag = "AntiAFK",
+    Callback = function(v)
+        if antiAfkConnection then
+            pcall(function() antiAfkConnection:Disconnect() end)
+            antiAfkConnection = nil
+        end
+        if v then
+            local VirtualUser = game:GetService("VirtualUser")
+            antiAfkConnection = Client.Idled:Connect(function()
+                pcall(function()
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                end)
+                print("🛡️ Anti-AFK: منع الطرد")
+            end)
+            print("✅ Anti-AFK مفعّل")
+        else
+            print("❌ Anti-AFK مطفي")
+        end
+    end
+})
+
+local ServerTab = Window:Tab({ Title = 'Server', Icon = 'server' })
+local function GetJobID() return game.JobId or "Unknown" end
+ServerTab:Code({ Title = "Current Server", Code = " " .. GetJobID() })
+ServerTab:Divider()
+ServerTab:Section({ Title = "Server Utilities:" })
+local ServerCode = ""
+ServerTab:Input({
+    Title = "Enter Server Code",
+    Placeholder = "Paste server JobId here...",
+    Callback = function(Value) ServerCode = Value end
+})
+ServerTab:Button({
+    Title = "Join Code", Icon = "log-in",
+    Callback = function()
+        if ServerCode == "" then return end
+        getgenv().SafeTeleport(false, ServerCode)
+    end
+})
+ServerTab:Button({
+    Title = "Rejoin", Icon = "refresh-ccw",
+    Callback = function() getgenv().SafeTeleport(true) end
+})
+ServerTab:Button({
+    Title = "Hop Server (Low Player)", Icon = "shuffle",
+    Callback = function() getgenv().SafeTeleport(false) end
+})
+
+ServerTab:Divider()
+ServerTab:Section({ Title = "Config System:" })
+local ConfigManager = Window.ConfigManager
+local MainConfig = ConfigManager:CreateConfig("Config_" .. Client.Name, true)
+
+ServerTab:Button({
+    Title = "Save Config",
+    Icon = "save",
+    Callback = function()
+        local success, err = pcall(function()
+            pcall(function() MainConfig:Delete() end)
+            task.wait(0.15)
+            MainConfig:Save()
+        end)
+        if success then
+            pcall(function()
+                WindUI:Notify({
+                    Title = "تم الحفظ",
+                    Content = "تم حفظ الإعدادات لحساب " .. Client.Name,
+                    Icon = "check",
+                    Duration = 3
+                })
+            end)
+            print("✅ تم الحفظ لحساب: " .. Client.Name)
+        else
+            warn("❌ فشل الحفظ: " .. tostring(err))
+        end
+    end
+})
+ServerTab:Button({
+    Title = "Load Config",
+    Icon = "download",
+    Callback = function()
+        local success, err = pcall(function() MainConfig:Load() end)
+        if success then
+            pcall(function()
+                WindUI:Notify({
+                    Title = "تم التحميل",
+                    Content = "تم تحميل إعدادات حساب " .. Client.Name,
+                    Icon = "download",
+                    Duration = 3
+                })
+            end)
+            print("✅ تم تحميل إعدادات حساب: " .. Client.Name)
+        else
+            warn("❌ فشل التحميل: " .. tostring(err))
+        end
+    end
+})
+
+local FishingTab = Window:Tab({ Title = 'Fishing', Icon = 'fishing-rod' })
+
+FishingTab:Section({ Title = "Fishing Settings:" })
+local FishingRods = {
+    {Name = "FishingRodUltimate", Level = 60, Price = 5000},
+    {Name = "FishingRodAdvanced", Level = 35, Price = 2300},
+    {Name = "FishingRodPro", Level = 20, Price = 800},
+    {Name = "FishingRodRegular", Level = 1, Price = 100}
+}
+local FishingBaits = {
+    {Name = "PrawntecUltimate", Level = 45, Price = 45},
+    {Name = "PrawntecPro", Level = 30, Price = 40},
+    {Name = "PrawntecRegular", Level = 25, Price = 35},
+    {Name = "WormtecUltimate", Level = 15, Price = 30},
+    {Name = "WormtecPro", Level = 8, Price = 25},
+    {Name = "WormtecRegular", Level = 1, Price = 20}
+}
+FishingTab:Dropdown({
+    Title = "Select Rod", Values = {"Smart Select", "FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"},
+    Value = "Smart Select",
+    Flag = "FishingRod",
+    Callback = function(Value) Config.FishingRod = Value end,
+})
+FishingTab:Dropdown({
+    Title = "Select Bait", Values = {"Smart Select", "PrawntecUltimate", "PrawntecPro", "PrawntecRegular", "WormtecUltimate", "WormtecPro", "WormtecRegular"},
+    Value = "Smart Select",
+    Flag = "FishingBait",
+    Callback = function(Value) Config.FishingWormtec = Value end,
+})
+FishingTab:Slider({
+    Title = "Bait Purchase Amount", Step = 1, Value = { Min = 1, Max = 500, Default = 200 },
+    Flag = "BaitAmount",
+    Callback = function(Value) Config.FishingBaitAmount = Value end,
+})
+
+FishingTab:Section({ Title = "Start:" })
+FishingTab:Toggle({
+    Title = "Auto Farm Fishing", Icon = "check", Type = "Checkbox", Value = false,
+    Flag = "AutoFarmFishing",
+    Callback = function(Value)
+        Config.AutoFishing = Value
+        if Value then
+            task.spawn(function()
+                while Config.AutoFishing do
+                    if Config.Paused then task.wait(1) continue end
+                    if Humanoid.Health <= 0 then task.wait(1) continue end
+
+                    -- ==========================================
+                    -- 🚶 المشي إلى مكان الصيد (91.661, 252.054, 809.636)
+                    -- ==========================================
+                    local fishingSpot = Vector3.new(91.661, 252.054, 809.636)
+                    if (RootPart.Position - fishingSpot).Magnitude > 5 then
+                        print("🚶 التوجه إلى مكان الصيد...")
+                        Sf:WalkTo(fishingSpot, Config.AutoFishing)
+                        task.wait(1)
+                    end
+
+                    local targetRod = Config.FishingRod
+                    if targetRod == "Smart Select" then
+                        targetRod = "FishingRodUltimate"
+                    end
+                    local targetBait = Config.FishingWormtec
+                    if targetBait == "Smart Select" then
+                        targetBait = "PrawntecUltimate"
+                    end
+
+                    local hasRod, hasBait = false, false
+                    local rodUid, baitUid = nil, nil
+                    local actualRodName = targetRod
+                    local currentBaitCount = 0
+
+                    local Items = PlayerGui:FindFirstChild("Items")
+                    if Items then
+                        local Holding = Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+                        if Holding then
+                            for _, v in pairs(Holding:GetChildren()) do
+                                if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+                                    local itemName = v:FindFirstChild("ItemName")
+                                    if itemName and itemName.Text then
+                                        local t = string.lower(itemName.Text)
+                                        if not hasRod and string.find(t, "rod") then
+                                            hasRod = true rodUid = v.Name actualRodName = itemName.Text
+                                        end
+                                        if string.find(t, "wormtec") or string.find(t, "prawntec") then
+                                            currentBaitCount = currentBaitCount + 1 baitUid = v.Name
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    if currentBaitCount > 0 then hasBait = true end
+
+                    -- ==========================================
+                    -- 🎣 نظام الصيد (فقط في مكان 70)
+                    -- ==========================================
+                    while Config.AutoFishing and not Config.Paused do
+                        -- فحص المخزون
+                        local isFullNow, currentCountNow, maxSlotsNow = Sf:IsInventoryFull()
+                        if isFullNow then
+                            print("📦 المخزون ممتلئ (" .. currentCountNow .. "/" .. maxSlotsNow .. ") - إيقاف الصيد")
+                            break
+                        end
+
+                        -- فحص الطعم
+                        local currentBaitCount2 = 0
+                        local ItemsCheck2 = PlayerGui:FindFirstChild("Items")
+                        if ItemsCheck2 then
+                            local HoldingCheck2 = ItemsCheck2:FindFirstChild("ItemsHolder") and ItemsCheck2.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+                            if HoldingCheck2 then
+                                for _, v in pairs(HoldingCheck2:GetChildren()) do
+                                    if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+                                        local itemName = v:FindFirstChild("ItemName")
+                                        if itemName and itemName.Text then
+                                            local t = string.lower(itemName.Text)
+                                            if string.find(t, "wormtec") or string.find(t, "prawntec") then
+                                                currentBaitCount2 = currentBaitCount2 + 1
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if currentBaitCount2 <= 0 then
+                            print("🛑 الطعم نفد - التوجه للشراء...")
+                            break
+                        end
+
+                        -- تجهيز السنارة والطعم
+                        if rodUid and baitUid then
+                            local rodTool = Character:FindFirstChild(actualRodName)
+                            if not rodTool then
+                                local foundTool = Backpack:FindFirstChild(actualRodName)
+                                if foundTool then
+                                    Humanoid:EquipTool(foundTool)
+                                    task.wait(0.2)
+                                    rodTool = foundTool
+                                else
+                                    Net.get("toggle_equip_item", tostring(rodUid))
+                                    task.wait(0.2)
+                                    local startTime = tick()
+                                    while tick() - startTime < 2 do
+                                        rodTool = Character:FindFirstChild(actualRodName) or Backpack:FindFirstChild(actualRodName)
+                                        if rodTool then break end
+                                        task.wait(0.1)
+                                    end
+                                    if rodTool and rodTool.Parent == Backpack then
+                                        Humanoid:EquipTool(rodTool)
+                                        task.wait(0.2)
+                                        rodTool = Character:FindFirstChild(actualRodName)
+                                    end
+                                end
+                            end
+                            
+                            if rodTool then
+                                Net.get("equip_ammo_on_item", rodUid, baitUid)
+                                task.wait(0.1)
+                                
+                                -- تحديد مكان الرمي (فقط مكان 70 مع تبديل بين موقعين)
+                                local positions70 = {
+                                    Vector3.new(86.802726745605, 245.29800415039, 924.455078125),
+                                    Vector3.new(93.74097442627, 245.23503112793, 923.85803222656),
+                                }
+                                
+                                -- اختيار عشوائي بين الموقعين
+                                local castPos = positions70[math.random(1, 2)]
+                                
+                                Net.get("throw_rod", rodTool, castPos)
+                                print("🎣 تم رمي السنارة في موقع 70...")
+                                
+                                -- انتظار النتيجة
+                                local timeout = tick() + 30
+                                local progressBarVisible = false
+                                local fishCaught = nil
+                                local fishUID = nil
+                                
+                                -- مراقبة شريط التقدم
+                                while Config.AutoFishing and tick() < timeout do
+                                    task.wait()
+                                    if Config.Paused then break end
+                                    
+                                    local sliderGui = PlayerGui:FindFirstChild("SliderMinigame")
+                                    if sliderGui then
+                                        local frame = sliderGui:FindFirstChildOfClass("Frame")
+                                        if frame and frame.Visible then
+                                            progressBarVisible = true
+                                            break
+                                        end
+                                    end
+                                end
+                                
+                                if progressBarVisible then
+                                    task.wait(1)
+                                    
+                                    -- جلب آخر سمكة تم صيدها من المخزون
+                                    local currentFish = GetFishNamesFromInventory()
+                                    local newFish = GetNewFish(LastFishCount, currentFish)
+                                    if #newFish > 0 then
+                                        fishCaught = newFish[#newFish]
+                                        print("🐟 تم صيد: " .. fishCaught)
+                                        
+                                        -- الحصول على UID السمكة
+                                        local Items = PlayerGui:FindFirstChild("Items")
+                                        if Items then
+                                            local Holding = Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+                                            if Holding then
+                                                for _, v in pairs(Holding:GetChildren()) do
+                                                    if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+                                                        local itemName = v:FindFirstChild("ItemName")
+                                                        if itemName and itemName.Text == fishCaught then
+                                                            local itemType = v:GetAttribute("ItemType")
+                                                            if itemType and string.lower(tostring(itemType)) == "fish" then
+                                                                fishUID = v.Name
+                                                                break
+                                                            end
+                                                        end
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                    
+                                    -- ==========================================
+                                    -- 🐟 فحص نوع السمكة
+                                    -- ==========================================
+                                    if fishCaught and (fishCaught == "Marlin" or fishCaught == "Sailfish") then
+                                        print("⭐ تم صيد سمكة نادرة: " .. fishCaught)
+                                        
+                                        if fishUID then
+                                            print("🗑️ رمي السمكة النادرة في المكان المحدد...")
+                                            
+                                            -- المشي إلى موقع الرمي (77.815, 252.054, 788.636)
+                                            local dropPos = Vector3.new(77.815, 252.054, 788.636)
+                                            Sf:WalkTo(dropPos, Config.AutoFishing)
+                                            task.wait(0.5)
+                                            
+                                            -- تنفيذ أمر الرمي
+                                            local Event = game:GetService("ReplicatedStorage").Remotes.Send
+                                            Event:FireServer("drop_item", fishUID, 1)
+                                            print("✅ تم رمي " .. fishCaught)
+                                            
+                                            -- العودة إلى مكان الصيد
+                                            Sf:WalkTo(fishingSpot, Config.AutoFishing)
+                                            task.wait(0.5)
+                                        end
+                                    else
+                                        -- إذا كانت سمكة عادية، نشيل السنارة ونعيد الرمي
+                                        print("🔄 سمكة عادية - إعادة الرمي...")
+                                        
+                                        if rodTool and rodTool.Parent == Character then
+                                            Humanoid:UnequipTools()
+                                            task.wait(0.2)
+                                        end
+                                        
+                                        if rodTool then
+                                            Humanoid:EquipTool(rodTool)
+                                            task.wait(0.2)
+                                        end
+                                        
+                                        Net.get("throw_rod", rodTool, castPos)
+                                        print("🎣 إعادة الرمي...")
+                                    end
+                                end
+                            end
+                        else
+                            break
+                        end
+                        task.wait(0.1)
+                    end
+                    
+                    -- ==========================================
+                    -- 🛒 شراء الطعم إذا نفد
+                    -- ==========================================
+                    local currentBaitCheck = 0
+                    local ItemsCheck = PlayerGui:FindFirstChild("Items")
+                    if ItemsCheck then
+                        local HoldingCheck = ItemsCheck:FindFirstChild("ItemsHolder") and ItemsCheck.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+                        if HoldingCheck then
+                            for _, v in pairs(HoldingCheck:GetChildren()) do
+                                if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+                                    local itemName = v:FindFirstChild("ItemName")
+                                    if itemName and itemName.Text then
+                                        local t = string.lower(itemName.Text)
+                                        if string.find(t, "wormtec") or string.find(t, "prawntec") then
+                                            currentBaitCheck = currentBaitCheck + 1
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    
+                    if currentBaitCheck <= 0 then
+                        print("🛒 التوجه لشراء الطعم...")
+                        local shopPos = Vector3.new(-136.406662, 254.851074, 153.555588)
+                        Sf:WalkTo(shopPos, Config.AutoFishing)
+                        task.wait(0.5)
+                        
+                        local baitsToBuy = Config.FishingBaitAmount
+                        for i = 1, baitsToBuy do
+                            Net.get("purchase_consumable", workspace:WaitForChild("ShopZone_Hardware"), targetBait)
+                            task.wait(0.1)
+                        end
+                        print("✅ تم شراء " .. baitsToBuy .. " طعم")
+                    end
+                end
+            end)
+        else
+            Sf:ForceStop()
+        end
+    end,
+})
+
+local autoEquipActive = false
+local fakeTools = {}
+local function clearFakeTools()
+    for _, obj in ipairs(fakeTools) do if obj then obj:Destroy() end end
+    fakeTools = {}
+end
+FishingTab:Toggle({
+    Title = "Auto Equip FishingRod", Desc = "تجهيز تلقائي دائم للسنارة", Value = false,
+    Flag = "AutoEquipRod",
+    Callback = function(v)
+        autoEquipActive = v
+        if not autoEquipActive then clearFakeTools() end
+        if autoEquipActive then
+            task.spawn(function()
+                while autoEquipActive do
+                    local character = Client.Character or Client.CharacterAdded:Wait()
+                    local backpack = Client:FindFirstChild("Backpack")
+                    local humanoid = character:FindFirstChildOfClass("Humanoid")
+                    local rArm = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+                    local toolNames = {"FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"}
+                    if backpack and humanoid and rArm then
+                        local mainTool = nil
+                        for _, name in ipairs(toolNames) do
+                            mainTool = character:FindFirstChild(name) or backpack:FindFirstChild(name)
+                            if mainTool then break end
+                        end
+                        if not mainTool then
+                            local Items = PlayerGui:FindFirstChild("Items")
+                            if Items then
+                                local Holding = Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+                                if Holding then
+                                    for _, v in pairs(Holding:GetChildren()) do
+                                        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+                                            local itemName = v:FindFirstChild("ItemName")
+                                            if itemName and itemName.Text then
+                                                for _, name in ipairs(toolNames) do
+                                                    if itemName.Text == name then
+                                                        Net.get("toggle_equip_item", v.Name)
+                                                        task.wait(0.2)
+                                                        break
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        for _, name in ipairs(toolNames) do
+                            mainTool = character:FindFirstChild(name) or backpack:FindFirstChild(name)
+                            if mainTool then break end
+                        end
+                        if mainTool and mainTool.Parent == backpack then humanoid:EquipTool(mainTool) end
+                        for _, name in ipairs(toolNames) do
+                            local tool = backpack:FindFirstChild(name)
+                            if tool and tool ~= mainTool and not character:FindFirstChild(name .. "_Fake") then
+                                local handle = tool:FindFirstChild("Handle")
+                                if handle then
+                                    local fakeHandle = handle:Clone()
+                                    fakeHandle.Name = name .. "_Fake"
+                                    fakeHandle.CanCollide = false
+                                    fakeHandle.Parent = character
+                                    local weld = Instance.new("WeldConstraint")
+                                    weld.Part0 = rArm
+                                    weld.Part1 = fakeHandle
+                                    weld.Parent = fakeHandle
+                                    fakeHandle.CFrame = rArm.CFrame
+                                    table.insert(fakeTools, fakeHandle)
+                                end
+                            end
+                        end
+                    end
+                    task.wait(0.5)
+                end
+            end)
+        end
+    end
+})
+]========]
+
+getgenv().TotalLevelScriptSource = ScriptCode
+loadstring(ScriptCode)()
