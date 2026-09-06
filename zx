@@ -1,1 +1,4452 @@
+if getgenv().RealGUI_Loaded then return end
+getgenv().RealGUI_Loaded = true
 
+--[[
+    Real GUI - Merged Edition
+    Base: Real GUI v7
+    Features from Kali + AutoFarm + Fish Manager + Stats + Report + Webhook Discord 
+]]
+
+local Players         = game:GetService("Players")
+local TweenService    = game:GetService("TweenService")
+local RunService      = game:GetService("RunService")
+local Workspace       = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser     = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local HttpService     = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local ContentProvider = game:GetService("ContentProvider")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local Camera      = Workspace.CurrentCamera
+
+local isMobileDevice = false
+
+-- ======================================================
+-- IMAGE ASSET IDS
+-- ======================================================
+local IMG_LOGO      = "rbxassetid://74142419209322"
+local IMG_DEVICE_BG = "rbxassetid://114332427623428"
+local IMG_MAIN_BG   = "rbxassetid://108873397593027"
+local IMG_DISCORD   = "rbxassetid://78296224145884"
+
+-- ======================================================
+-- ROOT SCREEN GUI
+-- ======================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RealGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = PlayerGui
+
+-- ======================================================
+-- HELPERS
+-- ======================================================
+local function new(className, props)
+    local inst = Instance.new(className)
+    for prop, value in pairs(props) do
+        if prop ~= "Parent" then
+            inst[prop] = value
+        end
+    end
+    if props.Parent then
+        inst.Parent = props.Parent
+    end
+    return inst
+end
+
+local function tween(obj, info, goal)
+    local t = TweenService:Create(obj, info, goal)
+    t:Play()
+    return t
+end
+
+local function typeWriterLoop(label, fullText, typeSpeed, holdTime, eraseSpeed)
+    task.spawn(function()
+        while label.Parent do
+            for i = 1, #fullText do
+                if not label.Parent then return end
+                label.Text = string.sub(fullText, 1, i)
+                task.wait(typeSpeed)
+            end
+            task.wait(holdTime)
+            for i = #fullText, 0, -1 do
+                if not label.Parent then return end
+                label.Text = string.sub(fullText, 1, i)
+                task.wait(eraseSpeed)
+            end
+            task.wait(0.4)
+        end
+    end)
+end
+
+local function formatTime(totalSeconds)
+    local h = math.floor(totalSeconds / 3600)
+    local m = math.floor((totalSeconds % 3600) / 60)
+    local s = math.floor(totalSeconds % 60)
+    if h > 0 then
+        return string.format("%02d:%02d:%02d", h, m, s)
+    end
+    return string.format("%02d:%02d", m, s)
+end
+
+local function showEffect(text, effectType)
+    local color = effectType == "success" and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(255, 70, 80)
+    local effect = new("TextLabel", {
+        Size = UDim2.new(0, 320, 0, 50),
+        Position = UDim2.new(0.5, -160, 0.18, 0),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = color,
+        TextSize = 18,
+        Font = Enum.Font.GothamBold,
+        TextStrokeTransparency = 0.3,
+        ZIndex = 50,
+        Parent = ScreenGui,
+    })
+    tween(effect, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0.5, -160, 0.15, 0)
+    })
+    task.delay(1.4, function()
+        if effect and effect.Parent then effect:Destroy() end
+    end)
+end
+
+-- ======================================================
+-- THEME
+-- ======================================================
+local THEME = {
+    Background   = Color3.fromRGB(6, 6, 8),
+    Panel        = Color3.fromRGB(13, 13, 16),
+    PanelLight   = Color3.fromRGB(20, 20, 24),
+    PanelHover   = Color3.fromRGB(28, 28, 33),
+    Accent       = Color3.fromRGB(255, 40, 70),
+    AccentDim    = Color3.fromRGB(150, 20, 40),
+    Text         = Color3.fromRGB(250, 250, 250),
+    SubText      = Color3.fromRGB(160, 160, 168),
+    Stroke       = Color3.fromRGB(40, 40, 46),
+    Green        = Color3.fromRGB(45, 235, 120),
+    GreenDim     = Color3.fromRGB(15, 100, 55),
+    Red          = Color3.fromRGB(255, 60, 60),
+    Overlay      = Color3.fromRGB(0, 0, 0),
+    Blue         = Color3.fromRGB(55, 123, 240),
+    Gold         = Color3.fromRGB(255, 215, 0),
+}
+
+local FONT_HEAVY   = Enum.Font.GothamBold
+local FONT_MEDIUM  = Enum.Font.GothamMedium
+local FONT_REGULAR = Enum.Font.Gotham
+
+local function addTextStroke(label, transparency)
+    label.TextStrokeTransparency = transparency or 0.5
+    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+end
+
+-- ======================================================
+-- RESPONSIVE SIZE
+-- ======================================================
+local function getMainSize(isMobile)
+    local vp = Camera.ViewportSize
+    if isMobile then
+        local w = math.clamp(vp.X * 0.94, 280, 370)
+        local h = math.clamp(vp.Y * 0.55, 340, 460)
+        return UDim2.fromOffset(w, h)
+    else
+        local w = math.clamp(vp.X * 0.40, 560, 700)
+        local h = math.clamp(vp.Y * 0.60, 400, 500)
+        return UDim2.fromOffset(w, h)
+    end
+end
+
+-- ======================================================
+-- 1) FULL-SCREEN LOADING INTRO
+-- ======================================================
+local IntroFrame = new("Frame", {
+    Name = "IntroFrame",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = THEME.Background,
+    BorderSizePixel = 0,
+    ZIndex = 20,
+    Parent = ScreenGui,
+})
+
+local IntroBgImage = new("ImageLabel", {
+    Name = "IntroBgImage",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 0,
+    BackgroundColor3 = THEME.Background,
+    Image = IMG_LOGO,
+    ScaleType = Enum.ScaleType.Crop,
+    ZIndex = 20,
+    Parent = IntroFrame,
+})
+
+local IntroTint = new("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = THEME.Overlay,
+    BackgroundTransparency = 0.4,
+    BorderSizePixel = 0,
+    ZIndex = 21,
+    Parent = IntroFrame,
+})
+
+local IntroTitle = new("TextLabel", {
+    Name = "IntroTitle",
+    Size = UDim2.fromScale(0.8, 0.1),
+    Position = UDim2.fromScale(0.5, 0.35),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    BackgroundTransparency = 1,
+    Font = Enum.Font.GothamBlack,
+    Text = "REAL",
+    TextColor3 = THEME.Text,
+    TextSize = 48,
+    ZIndex = 22,
+    Parent = IntroFrame,
+})
+addTextStroke(IntroTitle, 0.2)
+
+local IntroSubtitle = new("TextLabel", {
+    Name = "IntroSubtitle",
+    Size = UDim2.fromScale(0.8, 0.05),
+    Position = UDim2.fromScale(0.5, 0.45),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    BackgroundTransparency = 1,
+    Font = FONT_MEDIUM,
+    Text = "Initializing System...",
+    TextColor3 = THEME.Accent,
+    TextSize = 16,
+    ZIndex = 22,
+    Parent = IntroFrame,
+})
+addTextStroke(IntroSubtitle, 0.3)
+
+local BarBack = new("Frame", {
+    Name = "BarBack",
+    Size = UDim2.new(0.5, 0, 0, 5),
+    Position = UDim2.fromScale(0.5, 0.55),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    BackgroundColor3 = THEME.PanelLight,
+    BorderSizePixel = 0,
+    ZIndex = 22,
+    Parent = IntroFrame,
+})
+new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = BarBack})
+
+local BarFill = new("Frame", {
+    Name = "BarFill",
+    Size = UDim2.new(0, 0, 1, 0),
+    BackgroundColor3 = THEME.Accent,
+    BorderSizePixel = 0,
+    ZIndex = 23,
+    Parent = BarBack,
+})
+new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = BarFill})
+
+local loadingActive = true
+task.spawn(function()
+    local loadingTexts = {
+        "Initializing System...",
+        "Fetching Player Data...",
+        "Establishing Connection...",
+        "Loading Assets...",
+    }
+    local idx = 1
+    while loadingActive and IntroSubtitle.Parent do
+        if idx > #loadingTexts then idx = 1 end
+        IntroSubtitle.Text = loadingTexts[idx]
+        idx = idx + 1
+        task.wait(0.7)
+    end
+end)
+
+tween(BarFill, TweenInfo.new(3.5, Enum.EasingStyle.Quad), {Size = UDim2.new(1, 0, 1, 0)})
+task.wait(3.5)
+
+loadingActive = false
+IntroSubtitle.Text = "Welcome back, " .. LocalPlayer.Name .. "!"
+tween(IntroSubtitle, TweenInfo.new(0.3), {TextColor3 = THEME.Green})
+
+task.wait(1.5)
+
+tween(IntroTint, TweenInfo.new(0.6), {BackgroundTransparency = 1})
+tween(IntroBgImage, TweenInfo.new(0.6), {ImageTransparency = 1})
+tween(IntroFrame, TweenInfo.new(0.6), {BackgroundTransparency = 1})
+tween(IntroTitle, TweenInfo.new(0.5), {TextTransparency = 1})
+tween(IntroSubtitle, TweenInfo.new(0.5), {TextTransparency = 1})
+tween(BarBack, TweenInfo.new(0.5), {BackgroundTransparency = 1})
+tween(BarFill, TweenInfo.new(0.5), {BackgroundTransparency = 1})
+task.wait(0.65)
+IntroFrame:Destroy()
+
+-- ======================================================
+-- 2) DEVICE SELECTION
+-- ======================================================
+local DeviceOverlay = new("Frame", {
+    Name = "DeviceOverlay",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ZIndex = 20,
+    Parent = ScreenGui,
+})
+tween(DeviceOverlay, TweenInfo.new(0.35), {BackgroundTransparency = 0.45})
+
+local DeviceCard = new("Frame", {
+    Name = "DeviceCard",
+    Size = UDim2.fromOffset(300, 0),
+    Position = UDim2.fromScale(0.5, 0.5),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    BackgroundColor3 = THEME.Panel,
+    BorderSizePixel = 0,
+    ClipsDescendants = true,
+    ZIndex = 21,
+    Parent = DeviceOverlay,
+})
+new("UICorner", {CornerRadius = UDim.new(0, 14), Parent = DeviceCard})
+new("UIStroke", {Color = THEME.Accent, Thickness = 1, Transparency = 0.4, Parent = DeviceCard})
+
+local DeviceBgImage = new("ImageLabel", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 0,
+    BackgroundColor3 = THEME.Panel,
+    Image = IMG_DEVICE_BG,
+    ScaleType = Enum.ScaleType.Crop,
+    ZIndex = 21,
+    Parent = DeviceCard,
+})
+local DeviceBgTint = new("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = THEME.Overlay,
+    BackgroundTransparency = 0.35,
+    BorderSizePixel = 0,
+    ZIndex = 21,
+    Parent = DeviceCard,
+})
+
+tween(DeviceCard, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.fromOffset(300, 190),
+})
+
+local DeviceTitle = new("TextLabel", {
+    Size = UDim2.new(1, -30, 0, 22),
+    Position = UDim2.fromOffset(15, 22),
+    BackgroundTransparency = 1,
+    Font = FONT_HEAVY,
+    Text = "Choose your device",
+    TextColor3 = THEME.Text,
+    TextSize = 18,
+    ZIndex = 22,
+    Parent = DeviceCard,
+})
+addTextStroke(DeviceTitle, 0.3)
+
+local DeviceSub = new("TextLabel", {
+    Size = UDim2.new(1, -30, 0, 16),
+    Position = UDim2.fromOffset(15, 48),
+    BackgroundTransparency = 1,
+    Font = FONT_REGULAR,
+    Text = "This sets the layout size",
+    TextColor3 = THEME.SubText,
+    TextSize = 12,
+    ZIndex = 22,
+    Parent = DeviceCard,
+})
+addTextStroke(DeviceSub, 0.4)
+
+local ButtonHolder = new("Frame", {
+    Size = UDim2.new(1, -30, 0, 90),
+    Position = UDim2.fromOffset(15, 80),
+    BackgroundTransparency = 1,
+    ZIndex = 22,
+    Parent = DeviceCard,
+})
+
+new("UIListLayout", {
+    FillDirection = Enum.FillDirection.Horizontal,
+    HorizontalAlignment = Enum.HorizontalAlignment.Center,
+    VerticalAlignment = Enum.VerticalAlignment.Center,
+    Padding = UDim.new(0, 14),
+    Parent = ButtonHolder,
+})
+
+local function makeDeviceButton(text)
+    local btn = new("TextButton", {
+        Size = UDim2.new(0.47, 0, 1, 0),
+        BackgroundColor3 = THEME.PanelLight,
+        BackgroundTransparency = 0.1,
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = text,
+        TextColor3 = THEME.Text,
+        TextSize = 16,
+        ZIndex = 22,
+        Parent = ButtonHolder,
+    })
+    addTextStroke(btn, 0.4)
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = btn})
+    new("UIStroke", {Color = THEME.Accent, Thickness = 1, Transparency = 0.3, Parent = btn})
+
+    btn.MouseEnter:Connect(function()
+        tween(btn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.AccentDim, BackgroundTransparency = 0})
+    end)
+    btn.MouseLeave:Connect(function()
+        tween(btn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.PanelLight, BackgroundTransparency = 0.1})
+    end)
+    return btn
+end
+
+local PCButton     = makeDeviceButton("PC")
+local MobileButton = makeDeviceButton("Mobile")
+
+-- ======================================================
+-- 3) MAIN DASHBOARD
+-- ======================================================
+local MainFrame = new("Frame", {
+    Name = "MainFrame",
+    Size = UDim2.fromOffset(0, 0),
+    Position = UDim2.fromScale(0.5, 0.5),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    BackgroundColor3 = THEME.Background,
+    BorderSizePixel = 0,
+    Visible = false,
+    ClipsDescendants = true,
+    ZIndex = 2,
+    Parent = ScreenGui,
+})
+new("UICorner", {CornerRadius = UDim.new(0, 16), Parent = MainFrame})
+new("UIStroke", {Color = THEME.Accent, Thickness = 1, Transparency = 0.5, Parent = MainFrame})
+
+local MainUIScale = Instance.new("UIScale")
+MainUIScale.Name = "MainUIScale"
+MainUIScale.Scale = 1
+MainUIScale.Parent = MainFrame
+
+local MainBgImage = new("ImageLabel", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 0,
+    BackgroundColor3 = THEME.Background,
+    Image = IMG_MAIN_BG,
+    ScaleType = Enum.ScaleType.Crop,
+    ZIndex = 1,
+    Parent = MainFrame,
+})
+local MainBgTint = new("Frame", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = THEME.Overlay,
+    BackgroundTransparency = 0.45,
+    BorderSizePixel = 0,
+    ZIndex = 1,
+    Parent = MainFrame,
+})
+
+local TopBar = new("Frame", {
+    Name = "TopBar",
+    Size = UDim2.new(1, 0, 0, 42),
+    BackgroundColor3 = THEME.Panel,
+    BorderSizePixel = 0,
+    ZIndex = 3,
+    Parent = MainFrame,
+})
+new("UICorner", {CornerRadius = UDim.new(0, 16), Parent = TopBar})
+
+local TopBarMask = new("Frame", {
+    Size = UDim2.new(1, 0, 0, 16),
+    Position = UDim2.new(0, 0, 1, -16),
+    BackgroundColor3 = THEME.Panel,
+    BorderSizePixel = 0,
+    ZIndex = 3,
+    Parent = TopBar,
+})
+
+local TopBarText = new("TextLabel", {
+    Name = "TopBarText",
+    Size = UDim2.new(1, -110, 1, 0),
+    Position = UDim2.fromOffset(16, 0),
+    BackgroundTransparency = 1,
+    Font = Enum.Font.Code,
+    Text = "",
+    TextColor3 = THEME.Accent,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextSize = 16,
+    ZIndex = 4,
+    Parent = TopBar,
+})
+
+local ControlsHolder = new("Frame", {
+    Size = UDim2.fromOffset(70, 26),
+    Position = UDim2.new(1, -82, 0.5, 0),
+    AnchorPoint = Vector2.new(0, 0.5),
+    BackgroundTransparency = 1,
+    ZIndex = 5,
+    Parent = TopBar,
+})
+
+new("UIListLayout", {
+    FillDirection = Enum.FillDirection.Horizontal,
+    HorizontalAlignment = Enum.HorizontalAlignment.Right,
+    VerticalAlignment = Enum.VerticalAlignment.Center,
+    Padding = UDim.new(0, 8),
+    Parent = ControlsHolder,
+})
+
+local function makeControlButton(symbol, color)
+    local btn = new("TextButton", {
+        Size = UDim2.fromOffset(26, 26),
+        BackgroundColor3 = THEME.PanelLight,
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = symbol,
+        TextColor3 = THEME.SubText,
+        TextSize = 16,
+        ZIndex = 5,
+        Parent = ControlsHolder,
+    })
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = btn})
+    new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = btn})
+
+    btn.MouseEnter:Connect(function()
+        tween(btn, TweenInfo.new(0.15), {BackgroundColor3 = color})
+        tween(btn, TweenInfo.new(0.15), {TextColor3 = THEME.Text})
+    end)
+    btn.MouseLeave:Connect(function()
+        tween(btn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.PanelLight})
+        tween(btn, TweenInfo.new(0.15), {TextColor3 = THEME.SubText})
+    end)
+    return btn
+end
+
+local MinimizeButton = makeControlButton("—", THEME.AccentDim)
+local CloseButton     = makeControlButton("×", THEME.Red)
+
+typeWriterLoop(TopBarText, "Real is here // NEE", 0.06, 1.2, 0.03)
+
+local slidingAny = false
+
+do
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+
+    local function isOnSlider()
+        local pos = UserInputService:GetMouseLocation()
+        local guis = PlayerGui:GetGuiObjectsAtPosition(pos.X, pos.Y)
+        for _, g in ipairs(guis) do
+            if g:IsDescendantOf(MainFrame) then
+                local n = g.Name or ""
+                if n == "SliderTrack" or n == "SliderKnob" or n == "SliderFill" then
+                    return true
+                end
+                local p = g.Parent
+                if p and (p.Name == "SliderTrack" or p.Name == "SliderKnob" or p.Name == "SliderFill") then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
+    MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            if slidingAny or isOnSlider() then
+                return
+            end
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if not dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            slidingAny = false
+        end
+    end)
+
+    RunService.RenderStepped:Connect(function()
+        if dragging and dragInput then
+            if slidingAny or isOnSlider() then
+                dragging = false
+                return
+            end
+            update(dragInput)
+        end
+    end)
+end
+
+local Sidebar = new("Frame", {
+    Name = "Sidebar",
+    Size = UDim2.new(0, 150, 1, -42),
+    Position = UDim2.new(0, 0, 0, 42),
+    BackgroundColor3 = THEME.Panel,
+    BackgroundTransparency = 0.05,
+    BorderSizePixel = 0,
+    ZIndex = 2,
+    Parent = MainFrame,
+})
+
+local ProfileHolder = new("Frame", {
+    Size = UDim2.new(1, 0, 0, 100),
+    BackgroundTransparency = 1,
+    ZIndex = 3,
+    Parent = Sidebar,
+})
+
+local ProfileIcon = new("ImageLabel", {
+    Name = "ProfileIcon",
+    Size = UDim2.fromOffset(46, 46),
+    Position = UDim2.fromOffset(14, 14),
+    BackgroundColor3 = THEME.PanelLight,
+    Image = "",
+    ZIndex = 3,
+    Parent = ProfileHolder,
+})
+new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = ProfileIcon})
+new("UIStroke", {Color = THEME.Accent, Thickness = 2, Transparency = 0, Parent = ProfileIcon})
+
+task.spawn(function()
+    local ok, content = pcall(function()
+        return Players:GetUserThumbnailAsync(
+            LocalPlayer.UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size100x100
+        )
+    end)
+    if ok and content then
+        ProfileIcon.Image = content
+    end
+end)
+
+local UsernameLabel = new("TextLabel", {
+    Size = UDim2.new(1, -72, 0, 18),
+    Position = UDim2.fromOffset(68, 16),
+    BackgroundTransparency = 1,
+    Font = FONT_MEDIUM,
+    Text = LocalPlayer.DisplayName,
+    TextColor3 = THEME.Text,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextSize = 14,
+    ZIndex = 3,
+    Parent = ProfileHolder,
+})
+
+local HandleLabel = new("TextLabel", {
+    Size = UDim2.new(1, -72, 0, 14),
+    Position = UDim2.fromOffset(68, 36),
+    BackgroundTransparency = 1,
+    Font = FONT_REGULAR,
+    Text = "@" .. LocalPlayer.Name,
+    TextColor3 = THEME.SubText,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextSize = 12,
+    ZIndex = 3,
+    Parent = ProfileHolder,
+})
+
+local UptimeBadge = new("Frame", {
+    Name = "UptimeBadge",
+    Size = UDim2.fromOffset(90, 20),
+    Position = UDim2.fromOffset(14, 68),
+    BackgroundColor3 = THEME.GreenDim,
+    BackgroundTransparency = 0.25,
+    ZIndex = 3,
+    Parent = ProfileHolder,
+})
+new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = UptimeBadge})
+new("UIStroke", {Color = THEME.Green, Thickness = 1, Transparency = 0.1, Parent = UptimeBadge})
+
+local UptimeDot = new("Frame", {
+    Size = UDim2.fromOffset(6, 6),
+    Position = UDim2.fromOffset(8, 7),
+    BackgroundColor3 = THEME.Green,
+    BorderSizePixel = 0,
+    ZIndex = 4,
+    Parent = UptimeBadge,
+})
+new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = UptimeDot})
+
+local UptimeLabel = new("TextLabel", {
+    Size = UDim2.new(1, -20, 1, 0),
+    Position = UDim2.fromOffset(18, 0),
+    BackgroundTransparency = 1,
+    Font = FONT_MEDIUM,
+    Text = "00:00",
+    TextColor3 = THEME.Green,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextSize = 12,
+    ZIndex = 4,
+    Parent = UptimeBadge,
+})
+
+task.spawn(function()
+    while UptimeDot.Parent do
+        tween(UptimeDot, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.6})
+        task.wait(0.8)
+        tween(UptimeDot, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {BackgroundTransparency = 0})
+        task.wait(0.8)
+    end
+end)
+
+local startTime = os.clock()
+task.spawn(function()
+    while UptimeLabel.Parent do
+        local elapsed = os.clock() - startTime
+        UptimeLabel.Text = formatTime(elapsed)
+        task.wait(1)
+    end
+end)
+
+local Divider = new("Frame", {
+    Size = UDim2.new(1, -20, 0, 1),
+    Position = UDim2.fromOffset(10, 100),
+    BackgroundColor3 = THEME.Stroke,
+    BorderSizePixel = 0,
+    ZIndex = 3,
+    Parent = Sidebar,
+})
+
+local TabButtonHolder = new("ScrollingFrame", {
+    Size = UDim2.new(1, -20, 1, -120),
+    Position = UDim2.fromOffset(10, 110),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    ScrollBarImageColor3 = THEME.AccentDim,
+    CanvasSize = UDim2.fromOffset(0, 0),
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    ZIndex = 3,
+    Parent = Sidebar,
+})
+
+new("UIListLayout", {
+    Padding = UDim.new(0, 6),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Parent = TabButtonHolder,
+})
+
+local ContentArea = new("Frame", {
+    Name = "ContentArea",
+    Size = UDim2.new(1, -150, 1, -42),
+    Position = UDim2.new(0, 150, 0, 42),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ZIndex = 2,
+    Parent = MainFrame,
+})
+
+if getgenv then getgenv().identifyexecutor = nil end
+if getfenv then
+    local env = getfenv()
+    env.identifyexecutor = nil
+end
+
+local v_u_1 = {}
+local v2 = ReplicatedStorage:WaitForChild("Remotes", 10)
+local v_u_3 = {}
+local v_u_4 = {event = 0, func = 0}
+local v_u_5 = {}
+local v_u_6 = false
+local v_u_7 = {}
+
+if v2 then
+    v_u_3.send = v2:FindFirstChild("Send")
+    v_u_3.get  = v2:FindFirstChild("Get")
+end
+
+function v_u_1.on_connect(p8)
+    if v_u_6 then p8() else v_u_7[#v_u_7 + 1] = p8 end
+end
+
+function v_u_1.hook(p_u_9, p_u_10)
+    if not p_u_10 then error("Function nil for hook " .. p_u_9) end
+    if v_u_6 then
+        v_u_5[p_u_9] = p_u_10
+    else
+        v_u_1.on_connect(function() v_u_1.hook(p_u_9, p_u_10) end)
+    end
+end
+
+function v_u_1.is_connected(p11)
+    return p11:GetAttribute("IsConnected") and true or false
+end
+
+task.wait(0.1)
+
+if v_u_3.send then
+    local v_u_20 = v_u_3.send
+    local v_u_21 = v_u_3.send.FireServer
+    function v_u_1.send(p22, ...)
+        v_u_4.event = v_u_4.event + 1
+        v_u_21(v_u_20, v_u_4.event, p22, ...)
+    end
+end
+
+if v_u_3.get then
+    local v_u_23 = v_u_3.get
+    local v_u_24 = v_u_3.get.InvokeServer
+    function v_u_1.get(p25, ...)
+        v_u_4.func = v_u_4.func + 1
+        return v_u_24(v_u_23, v_u_4.func, p25, ...)
+    end
+end
+
+task.wait(0.1)
+
+local function v_u_29()
+    if v_u_3.send then
+        v_u_3.send.OnClientEvent:Connect(function(p26, ...)
+            if v_u_5[p26] then v_u_5[p26](...) end
+        end)
+    end
+    if v_u_3.get then
+        function v_u_3.get.OnClientInvoke(p27, ...)
+            if v_u_5[p27] then return v_u_5[p27](...) end
+        end
+    end
+    pcall(function()
+        for i = 1, #v_u_7 do v_u_7[i]() end
+    end)
+end
+
+function v_u_1.loaded()
+    v_u_6 = true
+    v_u_29()
+end
+
+pcall(function()
+    local TransitionModule = require(ReplicatedStorage.Modules.Game.UI.TransitionUI)
+    TransitionModule.transition = function() end
+end)
+
+pcall(function()
+    local CharCreator = require(ReplicatedStorage.Modules.Game.CharacterCreator.CharacterCreator)
+    if CharCreator.start then
+        CharCreator.start = function() while true do task.wait(1) end end
+    end
+end)
+
+local Net_Original, Data, NetModule, ItemUtils
+pcall(function()
+    Net_Original = require(ReplicatedStorage.Modules.Core.Net)
+    NetModule = Net_Original
+end)
+pcall(function()
+    Data = require(ReplicatedStorage.Modules.Core.Data)
+end)
+pcall(function()
+    ItemUtils = require(ReplicatedStorage.Modules.Game.Inventory.ItemUtils)
+end)
+if not Net_Original then
+    pcall(function()
+        local Modules = ReplicatedStorage:WaitForChild("Modules", 5)
+        if Modules then
+            local Core = Modules:FindFirstChild("Core")
+            if Core then
+                Net_Original = require(Core:WaitForChild("Net"))
+                NetModule = Net_Original
+                Data = require(Core:WaitForChild("Data"))
+            end
+            local GameModules = Modules:FindFirstChild("Game")
+            if GameModules then
+                local Inv = GameModules:FindFirstChild("Inventory")
+                if Inv then
+                    ItemUtils = require(Inv:WaitForChild("ItemUtils"))
+                end
+            end
+        end
+    end)
+end
+
+local antiAFKEnabled = true
+task.spawn(function()
+    while antiAFKEnabled do
+        task.wait(15 * 60)
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            local hum = char.Humanoid
+            if hum.Health > 0 then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                task.wait(0.1)
+                hum:ChangeState(Enum.HumanoidStateType.Landed)
+            end
+        end
+    end
+end)
+
+CAST_POSITIONS = {
+    Vector3.new(82.113189697266, 245.16184997559, 922.22076416016),
+    Vector3.new(87.578094482422, 245.05616760254, 922.16223144531),
+    Vector3.new(86.844085693359, 244.82890319824, 920.00738525391),
+    Vector3.new(87.49275970459, 245.28297424316, 924.31262207031),
+    Vector3.new(89.350997924805, 245.19715881348, 923.49896240234),
+}
+multiSpotEnabled = false
+currentSpotIndex = 1
+catchesPerSpot = 1
+currentSpotCatches = 0
+enabledSpots = {true, false, false, false, false}
+
+local function GetRodTool()
+    local Character = LocalPlayer.Character
+    local Backpack = LocalPlayer:FindFirstChild("Backpack")
+    local rodNames = {"FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"}
+
+    local function looksLikeRod(inst)
+        if not inst or not inst:IsA("Tool") then return false end
+        local n = string.lower(tostring(inst.Name))
+        if string.find(n, "rod") or string.find(n, "fish") or string.find(n, "سنار") then
+            return true
+        end
+        for _, name in ipairs(rodNames) do
+            if inst.Name == name then return true end
+        end
+        return false
+    end
+
+    if Character then
+        local equipped = Character:FindFirstChildOfClass("Tool")
+        if equipped then return equipped end
+        for _, name in ipairs(rodNames) do
+            local tool = Character:FindFirstChild(name)
+            if tool then return tool end
+        end
+        for _, child in ipairs(Character:GetChildren()) do
+            if looksLikeRod(child) then return child end
+        end
+    end
+
+    if Backpack then
+        for _, name in ipairs(rodNames) do
+            local tool = Backpack:FindFirstChild(name)
+            if tool then return tool end
+        end
+        for _, child in ipairs(Backpack:GetChildren()) do
+            if looksLikeRod(child) then return child end
+        end
+    end
+    return nil
+end
+
+local function EquipRod()
+    local tool = GetRodTool()
+    if not tool then return false end
+    local Character = LocalPlayer.Character
+    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    if Humanoid and tool.Parent == LocalPlayer.Backpack then
+        Humanoid:EquipTool(tool)
+    end
+    return true
+end
+
+function getRodAndBaitUid()
+    local rodUid, baitUid, actualRodName = nil, nil, nil
+    local Items = PlayerGui:FindFirstChild("Items")
+    if Items then
+        local Holding = Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+        if Holding then
+            for _, v in pairs(Holding:GetChildren()) do
+                if v.Name ~= "Folder" and v.Name ~= "UIGridLayout" and v.Name ~= "ItemTemplate" then
+                    local itemName = v:FindFirstChild("ItemName")
+                    if itemName and itemName.Text then
+                        local t = string.lower(itemName.Text)
+                        if string.find(t, "rod") then
+                            rodUid = v.Name
+                            actualRodName = itemName.Text
+                        end
+                        if string.find(t, "wormtec") or string.find(t, "prawntec") then
+                            baitUid = v.Name
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return rodUid, baitUid, actualRodName
+end
+
+function EquipBaitOnRod()
+    local rodUid, baitUid = getRodAndBaitUid()
+    if not rodUid or not baitUid then
+        return false
+    end
+    pcall(function()
+        local Net = require(ReplicatedStorage.Modules.Core.Net)
+        Net.get("equip_ammo_on_item", rodUid, baitUid)
+    end)
+    return true
+end
+
+function getEnabledSpotList()
+    local list = {}
+    for i = 1, #CAST_POSITIONS do
+        if enabledSpots[i] then
+            table.insert(list, i)
+        end
+    end
+    if #list == 0 then
+        enabledSpots[1] = true
+        table.insert(list, 1)
+    end
+    return list
+end
+
+function getCurrentCastPosition()
+    local enabled = getEnabledSpotList()
+    local ok = false
+    for _, i in ipairs(enabled) do
+        if i == currentSpotIndex then ok = true break end
+    end
+    if not ok then
+        currentSpotIndex = enabled[1]
+    end
+    multiSpotEnabled = #enabled > 1
+    return CAST_POSITIONS[currentSpotIndex] or CAST_POSITIONS[1]
+end
+
+function advanceSpotAfterCatch()
+    local enabled = getEnabledSpotList()
+    multiSpotEnabled = #enabled > 1
+    if not multiSpotEnabled then return end
+    currentSpotCatches = currentSpotCatches + 1
+    if currentSpotCatches >= catchesPerSpot then
+        currentSpotCatches = 0
+        local prev = currentSpotIndex
+        local idxInEnabled = 1
+        for i, spot in ipairs(enabled) do
+            if spot == prev then
+                idxInEnabled = i
+                break
+            end
+        end
+        currentSpotIndex = enabled[(idxInEnabled % #enabled) + 1]
+        showEffect("تبديل للوزنية " .. currentSpotIndex, "success")
+    end
+end
+
+function hasBaitInInventory()
+    local _, baitUid = getRodAndBaitUid()
+    return baitUid ~= nil
+end
+
+function isPlayerCastOut()
+    if isSliderOpen and isSliderOpen() then return true end
+    local hooked = nil
+    pcall(function() hooked = getHookedFishName() end)
+    if hooked then return true end
+
+    local Character = LocalPlayer.Character
+    if not Character then return false end
+    local rod = Character:FindFirstChildOfClass("Tool")
+    if not rod then return false end
+
+    local found = false
+    pcall(function()
+        for _, d in ipairs(rod:GetDescendants()) do
+            local n = string.lower(tostring(d.Name))
+            if d:IsA("BoolValue") or d:IsA("NumberValue") then
+                if (string.find(n, "cast") or string.find(n, "fish") or string.find(n, "line")) then
+                    if d:IsA("BoolValue") and d.Value == true then found = true break end
+                    if d:IsA("NumberValue") and d.Value ~= 0 then found = true break end
+                end
+            elseif d:IsA("Beam") or d:IsA("RopeConstraint") or d:IsA("RodConstraint") then
+                found = true
+                break
+            elseif string.find(n, "bobber") or string.find(n, "float") or string.find(n, "line") then
+                if d:IsA("BasePart") or d:IsA("Attachment") or d:IsA("BillboardGui") then
+                    found = true
+                    break
+                end
+            end
+        end
+    end)
+    if found then return true end
+
+    pcall(function()
+        local root = Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        for _, inst in ipairs(Workspace:GetChildren()) do
+            local n = string.lower(tostring(inst.Name))
+            if string.find(n, "bobber") or string.find(n, "float") or string.find(n, "lure") or string.find(n, "bait") then
+                local part = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart")
+                if part and (part.Position - root.Position).Magnitude < 200 then
+                    found = true
+                    break
+                end
+            end
+        end
+    end)
+    return found
+end
+
+__rg_casting = false
+__rg_lastCast = 0
+__rg_farmLock = false
+__rg_noAction = 0
+
+local function isRodTool(tool)
+    if not tool or not tool:IsA("Tool") then return false end
+    local n = string.lower(tostring(tool.Name))
+    if string.find(n, "rod") or string.find(n, "سنار") then return true end
+    local names = {"FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"}
+    for _, name in ipairs(names) do
+        if tool.Name == name then return true end
+    end
+    return false
+end
+
+local function forceEquipRodInHand()
+    local Character = LocalPlayer.Character
+    if not Character then return nil end
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    local Backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not Humanoid then return nil end
+
+    local rodUid, _, actualRodName = getRodAndBaitUid()
+    local Net = require(ReplicatedStorage.Modules.Core.Net)
+
+    local held = Character:FindFirstChildOfClass("Tool")
+    if held and not isRodTool(held) then
+        pcall(function() Humanoid:UnequipTools() end)
+        task.wait(0.05)
+    end
+
+    local rodTool = nil
+    if actualRodName then
+        rodTool = Character:FindFirstChild(actualRodName) or (Backpack and Backpack:FindFirstChild(actualRodName))
+    end
+    if not rodTool then
+        rodTool = GetRodTool()
+    end
+    if not rodTool and rodUid then
+        pcall(function() Net.get("toggle_equip_item", tostring(rodUid)) end)
+        task.wait(0.08)
+        rodTool = GetRodTool()
+        if actualRodName then
+            rodTool = rodTool or Character:FindFirstChild(actualRodName) or (Backpack and Backpack:FindFirstChild(actualRodName))
+        end
+    end
+    if not rodTool then
+        return nil
+    end
+
+    if rodTool.Parent ~= Character then
+        if rodTool.Parent == Backpack then
+            Humanoid:EquipTool(rodTool)
+            task.wait(0.08)
+        end
+    end
+
+    local inHand = Character:FindFirstChildOfClass("Tool")
+    if inHand and isRodTool(inHand) then
+        return inHand
+    end
+    if rodTool.Parent == Backpack or rodTool.Parent == Character then
+        pcall(function() Humanoid:UnequipTools() end)
+        task.wait(0.04)
+        if rodTool.Parent == Backpack then
+            Humanoid:EquipTool(rodTool)
+            task.wait(0.08)
+        end
+        inHand = Character:FindFirstChildOfClass("Tool")
+        if inHand and isRodTool(inHand) then
+            return inHand
+        end
+    end
+    return nil
+end
+
+local function CastRod()
+    if __rg_casting then return false end
+    local now = os.clock()
+    if now - __rg_lastCast < 0.2 then return false end
+    __rg_casting = true
+    __rg_lastCast = now
+
+    local ok, result = pcall(function()
+        local Character = LocalPlayer.Character
+        if not Character then return false end
+        if not Character:FindFirstChild("HumanoidRootPart") then return false end
+
+        local rodUid, baitUid = getRodAndBaitUid()
+        if not baitUid then
+            showEffect("ما معك طعم — وقف الرمي", "error")
+            return false
+        end
+        if not rodUid then
+            showEffect("ما لقيت السنارة", "error")
+            return false
+        end
+
+        local rodTool = forceEquipRodInHand()
+        if not rodTool then
+            showEffect("مسك السنارة فشل — ما تم الرمي", "error")
+            return false
+        end
+
+        local Net = require(ReplicatedStorage.Modules.Core.Net)
+        local targetPos = getCurrentCastPosition()
+
+        Net.get("equip_ammo_on_item", rodUid, baitUid)
+        Net.get("throw_rod", rodTool, targetPos)
+
+        return true
+    end)
+
+    __rg_casting = false
+    return ok and result == true
+end
+
+local fishList = {
+    ["Bass"] = true,
+    ["Coelacanth"] = true,
+    ["Dolphinfish"] = true,
+    ["Marlin"] = true,
+    ["Northern Pike"] = true,
+    ["Perch"] = true,
+    ["Sailfish"] = true,
+    ["Salmon"] = true,
+    ["Tuna"] = true,
+}
+
+local FISH_ORDER = {
+    "Bass",
+    "Perch",
+    "Salmon",
+    "Northern Pike",
+    "Dolphinfish",
+    "Coelacanth",
+    "Tuna",
+    "Sailfish",
+    "Marlin",
+}
+
+local FISH_IMAGES = {
+    ["Bass"] = "rbxassetid://115478852920268",
+    ["Perch"] = "rbxassetid://120790036643519",
+    ["Northern Pike"] = "rbxassetid://91567798951795",
+    ["Dolphinfish"] = "rbxassetid://74102109520530",
+    ["Coelacanth"] = "rbxassetid://111492514991742",
+    ["Sailfish"] = "rbxassetid://136544080216241",
+    ["Marlin"] = "rbxassetid://134139262277770",
+    ["Salmon"] = "rbxassetid://116976924917398",
+    ["Tuna"] = "rbxassetid://103896149644143",
+}
+
+local fishImageCacheFolder = nil
+local fishImagesReady = false
+
+task.spawn(function()
+    local ids = {}
+    for _, asset in pairs(FISH_IMAGES) do
+        table.insert(ids, asset)
+        local numericId = string.match(asset, "%d+")
+        if numericId then
+            table.insert(ids, string.format("rbxthumb://type=Asset&id=%s&w=150&h=150", numericId))
+        end
+    end
+    pcall(function()
+        ContentProvider:PreloadAsync(ids)
+    end)
+
+    local function attachCache()
+        if not ScreenGui or not ScreenGui.Parent then return false end
+        if fishImageCacheFolder and fishImageCacheFolder.Parent then return true end
+        local folder = Instance.new("Folder")
+        folder.Name = "FishImageCache"
+        folder.Parent = ScreenGui
+        for name, asset in pairs(FISH_IMAGES) do
+            local img = Instance.new("ImageLabel")
+            img.Name = name
+            img.Size = UDim2.fromOffset(1, 1)
+            img.Position = UDim2.fromOffset(-50, -50)
+            img.BackgroundTransparency = 1
+            img.ImageTransparency = 1
+            local numericId = string.match(asset, "%d+")
+            if numericId then
+                img.Image = string.format("rbxthumb://type=Asset&id=%s&w=150&h=150", numericId)
+            else
+                img.Image = asset
+            end
+            img.ScaleType = Enum.ScaleType.Crop
+            img.Parent = folder
+        end
+        fishImageCacheFolder = folder
+        return true
+    end
+
+    local t = 0
+    while t < 15 and not attachCache() do
+        task.wait(0.2)
+        t = t + 0.2
+    end
+    fishImagesReady = true
+end)
+
+local fishSpotMarkers = {}
+
+local function clearFishMarker(spotIndex)
+    local rec = fishSpotMarkers[spotIndex]
+    if type(rec) == "table" and rec.part then
+        if rec.part.Parent then rec.part:Destroy() end
+        fishSpotMarkers[spotIndex] = nil
+    end
+end
+
+local suppressFishImageUntil = 0
+
+local function clearAllFishMarkers()
+    local keys = {}
+    for idx, rec in pairs(fishSpotMarkers) do
+        if type(idx) == "number" then
+            table.insert(keys, idx)
+        end
+    end
+    for _, idx in ipairs(keys) do
+        clearFishMarker(idx)
+    end
+    fishSpotMarkers._blocked = nil
+    fishSpotMarkers._lastShown = nil
+    suppressFishImageUntil = 0
+end
+
+local function showCaughtFishImage(fishName)
+    if not fishName then return end
+    if os.clock() < suppressFishImageUntil then return end
+    local asset = FISH_IMAGES[fishName]
+    if not asset then return end
+
+    local spotIndex = 1
+    if multiSpotEnabled then
+        spotIndex = currentSpotIndex or 1
+    end
+    local pos = getCurrentCastPosition()
+    if not pos then return end
+
+    local existing = fishSpotMarkers[spotIndex]
+    if existing and existing.name == fishName and existing.part and existing.part.Parent then
+        return
+    end
+
+    clearFishMarker(spotIndex)
+
+    local part = Instance.new("Part")
+    part.Name = "RealGUI_FishMark_" .. tostring(spotIndex)
+    part.Anchored = true
+    part.CanCollide = false
+    part.CanQuery = false
+    part.CanTouch = false
+    part.Transparency = 1
+    part.Size = Vector3.new(0.2, 0.2, 0.2)
+    part.Position = pos + Vector3.new(0, 4, 0)
+    part.Parent = Workspace
+
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "RealGUI_FishBill"
+    bb.AlwaysOnTop = true
+    bb.LightInfluence = 0
+    -- تصغير الصورة وقلب مسافة الظهور للجوال لتجنب اللاق
+    local imgSize = isMobileDevice and 40 or 64
+    bb.Size = UDim2.fromOffset(imgSize, imgSize)
+    bb.StudsOffset = Vector3.new(0, 1, 0)
+    bb.MaxDistance = isMobileDevice and 200 or 400
+    bb.Parent = part
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.fromScale(1, 1)
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.ClipsDescendants = true
+    frame.Parent = bb
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = frame
+
+    local img = Instance.new("ImageLabel")
+    img.Name = "Pic"
+    img.BackgroundTransparency = 1
+    img.BorderSizePixel = 0
+    img.Size = UDim2.fromScale(1, 1)
+    img.Position = UDim2.fromScale(0, 0)
+    img.ScaleType = Enum.ScaleType.Crop
+    local numericId = string.match(asset, "%d+")
+    local cached = fishImageCacheFolder and fishImageCacheFolder:FindFirstChild(fishName)
+    if cached and cached:IsA("ImageLabel") and cached.Image ~= "" then
+        img.Image = cached.Image
+    elseif numericId then
+        img.Image = string.format("rbxthumb://type=Asset&id=%s&w=150&h=150", numericId)
+    else
+        img.Image = asset
+    end
+    img.Parent = frame
+
+    fishSpotMarkers[spotIndex] = {part = part, image = img, name = fishName}
+    fishSpotMarkers._lastShown = fishName
+    fishSpotMarkers._blocked = nil
+end
+
+local function getOrderedFishNames()
+    local ordered = {}
+    local added = {}
+    for _, name in ipairs(FISH_ORDER) do
+        if fishList[name] ~= nil then
+            table.insert(ordered, name)
+            added[name] = true
+        end
+    end
+    for name in pairs(fishList) do
+        if not added[name] then
+            table.insert(ordered, name)
+        end
+    end
+    return ordered
+end
+
+local skipFishSelected = {}
+for _, name in ipairs(FISH_ORDER) do
+    skipFishSelected[name] = false
+end
+for name in pairs(fishList) do
+    if skipFishSelected[name] == nil then
+        skipFishSelected[name] = false
+    end
+end
+
+local skipBadFishEnabled = false
+local skipDelay = 0
+local isSkippingFish = false
+local autoFarmActive = false
+
+local function pressKey2()
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Two, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Two, false, game)
+    end)
+end
+
+local function exactFishName(name)
+    if not name then return nil end
+    name = tostring(name)
+    if fishList[name] ~= nil then
+        return name
+    end
+    return nil
+end
+
+local function parseFishNameFromText(text)
+    if not text or text == "" then return nil end
+    local raw = tostring(text)
+    local exact = exactFishName(raw)
+    if exact then return exact end
+    local inside = string.match(raw, "%(([^%)]+)%)")
+    if inside then
+        inside = string.gsub(inside, "^%s+", "")
+        inside = string.gsub(inside, "%s+$", "")
+        exact = exactFishName(inside)
+        if exact then return exact end
+    end
+    return nil
+end
+
+local function fishNameFromModel(inst)
+    local cur = inst
+    for _ = 1, 8 do
+        if not cur then break end
+        local exact = exactFishName(cur.Name)
+        if exact then return exact end
+        if cur:IsA("Model") or cur:IsA("Folder") then
+            exact = exactFishName(cur.Name)
+            if exact then return exact end
+        end
+        cur = cur.Parent
+    end
+    return nil
+end
+
+local function readLabelsNear(inst)
+    if not inst then return nil end
+    local fromModel = fishNameFromModel(inst)
+    if fromModel then return fromModel end
+    local parsed = parseFishNameFromText(inst.Name)
+    if parsed then return parsed end
+    if inst:IsA("StringValue") or inst:IsA("ObjectValue") then
+        parsed = parseFishNameFromText(tostring(inst.Value))
+        if parsed then return parsed end
+    end
+    for _, attrVal in pairs(inst:GetAttributes()) do
+        parsed = parseFishNameFromText(tostring(attrVal))
+        if parsed then return parsed end
+    end
+    if inst:IsA("BillboardGui") or inst:IsA("SurfaceGui") or inst:IsA("TextLabel") or inst:IsA("TextButton") then
+        local t = inst.Text
+        if t then
+            parsed = parseFishNameFromText(t)
+            if parsed then return parsed end
+        end
+    end
+    for _, child in ipairs(inst:GetChildren()) do
+        if child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
+            for _, lab in ipairs(child:GetChildren()) do
+                if lab:IsA("TextLabel") or lab:IsA("TextButton") then
+                    parsed = parseFishNameFromText(lab.Text)
+                    if parsed then return parsed end
+                end
+            end
+        elseif child:IsA("TextLabel") or child:IsA("TextButton") then
+            parsed = parseFishNameFromText(child.Text)
+            if parsed then return parsed end
+        end
+    end
+    return nil
+end
+
+local function GetRodInHand()
+    local Character = LocalPlayer.Character
+    if not Character then return nil end
+    local equipped = Character:FindFirstChildOfClass("Tool")
+    if equipped then
+        local n = string.lower(tostring(equipped.Name))
+        if string.find(n, "rod") or string.find(n, "fish") or string.find(n, "سنار") then
+            return equipped
+        end
+    end
+    local rodNames = {"FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"}
+    for _, name in ipairs(rodNames) do
+        local t = Character:FindFirstChild(name)
+        if t then return t end
+    end
+    for _, child in ipairs(Character:GetChildren()) do
+        if child:IsA("Tool") then
+            local n = string.lower(tostring(child.Name))
+            if string.find(n, "rod") or string.find(n, "fish") or string.find(n, "سنار") then
+                return child
+            end
+        end
+    end
+    return nil
+end
+
+local function getHookedFishName()
+    local function isUnder(inst, ancestor)
+        local cur = inst
+        while cur do
+            if cur == ancestor then return true end
+            cur = cur.Parent
+        end
+        return false
+    end
+
+    local function otherEnd(obj, rod)
+        local ends = {}
+        for _, prop in ipairs({"Attachment0", "Attachment1", "Part0", "Part1"}) do
+            local ok, val = pcall(function()
+                return obj[prop]
+            end)
+            if ok and typeof(val) == "Instance" then
+                if val:IsA("Attachment") then
+                    table.insert(ends, val.Parent)
+                else
+                    table.insert(ends, val)
+                end
+            end
+        end
+        for _, node in ipairs(ends) do
+            if node and not isUnder(node, rod) then
+                return node
+            end
+        end
+        return ends[2]
+    end
+
+    local function scanForFish(inst, depth)
+        if not inst then return nil end
+        depth = depth or 0
+        local n = readLabelsNear(inst)
+        if n then return n end
+        if depth >= 3 then return nil end
+        for _, child in ipairs(inst:GetChildren()) do
+            n = scanForFish(child, depth + 1)
+            if n then return n end
+        end
+        if inst.Parent and inst.Parent ~= Workspace and not inst.Parent:IsA("Tool") then
+            return readLabelsNear(inst.Parent)
+        end
+        return nil
+    end
+
+    local function fromRodLine(rod)
+        if not rod then return nil end
+        local found = nil
+        pcall(function()
+            local n = scanForFish(rod, 0)
+            if n then found = n return end
+            for _, v in ipairs(rod:GetDescendants()) do
+                n = readLabelsNear(v)
+                if n then found = n return end
+                if v:IsA("Beam") or v:IsA("Trail")
+                    or v:IsA("RopeConstraint") or v:IsA("RodConstraint")
+                    or v:IsA("SpringConstraint") then
+                    local other = otherEnd(v, rod)
+                    if other then
+                        n = scanForFish(other, 0)
+                        if n then found = n return end
+                        local cur = other
+                        for _ = 1, 6 do
+                            if not cur then break end
+                            n = readLabelsNear(cur)
+                            if n then found = n return end
+                            cur = cur.Parent
+                            if not cur or cur == Workspace or cur:IsA("Tool") then break end
+                        end
+                    end
+                end
+            end
+        end)
+        return found
+    end
+
+    local ok, result = pcall(function()
+        local rod = GetRodInHand() or GetRodTool()
+        if not rod then return nil end
+        return fromRodLine(rod)
+    end)
+    if ok then return result end
+    return nil
+end
+
+local function isSkipTarget(fishName)
+    return skipBadFishEnabled and fishName and skipFishSelected[fishName] == true
+end
+
+local function doSkipHookedFish(fishName, alreadyWaited)
+    if isSkippingFish then return false end
+    isSkippingFish = true
+    if not alreadyWaited and skipDelay > 0 then
+        local waited = 0
+        while waited < skipDelay do
+            if not skipBadFishEnabled then
+                break
+            end
+            task.wait(0.05)
+            waited = waited + 0.05
+        end
+    end
+    if not skipBadFishEnabled then
+        isSkippingFish = false
+        return false
+    end
+
+    pcall(function()
+        local Character = LocalPlayer.Character
+        local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+        if Humanoid then
+            Humanoid:UnequipTools()
+            task.wait(0.03)
+            EquipRod()
+        else
+            pressKey2()
+            pressKey2()
+        end
+    end)
+
+    showEffect("تسكيب: " .. tostring(fishName), "error")
+    isSkippingFish = false
+    return true
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if not isSkippingFish and not autoFarmActive then
+            local fishName = getHookedFishName()
+            if not fishName then
+                if fishSpotMarkers._blocked or fishSpotMarkers._lastShown then
+                    fishSpotMarkers._blocked = nil
+                    clearAllFishMarkers()
+                    fishSpotMarkers._blocked = nil
+                    suppressFishImageUntil = 0
+                end
+            elseif skipBadFishEnabled and skipFishSelected[fishName] == true then
+                showCaughtFishImage(fishName)
+                doSkipHookedFish(fishName)
+                clearAllFishMarkers()
+            else
+                showCaughtFishImage(fishName)
+            end
+        end
+    end
+end)
+
+local dropFishSelected = {}
+for name in pairs(fishList) do
+    dropFishSelected[name] = false
+end
+local fishAutoDropEnabled = false
+local dropDelay = 0
+
+local function dropFishItem(guid)
+    if not guid then return end
+    pcall(function()
+        if NetModule then NetModule.send("drop_item", guid, 1) end
+    end)
+end
+
+local function autoDropFish()
+    if not fishAutoDropEnabled then return end
+    pcall(function()
+        if not ItemUtils or not Data then return end
+        ItemUtils.iterate_through_items(Data, function(itemData)
+            if not itemData or not itemData.guid or not itemData.name then return end
+            if dropFishSelected[itemData.name] then
+                if dropDelay > 0 then
+                    task.wait(dropDelay)
+                end
+                if not fishAutoDropEnabled then return end
+                local amount = itemData.amount or 1
+                for i = 1, amount do
+                    dropFishItem(itemData.guid)
+                    task.wait(0.05)
+                end
+            end
+        end)
+    end)
+end
+
+local autoSellEnabled = false
+local SELL_POSITION = Vector3.new(-252.746, 252.839, 379.64)
+local SELL_DISTANCE = 5
+local wasNearSell = false
+
+local function playerHasFish()
+    local has = false
+    pcall(function()
+        if ItemUtils and Data then
+            ItemUtils.iterate_through_items(Data, function(itemData)
+                if itemData and itemData.name and fishList[itemData.name] then
+                    has = true
+                end
+            end)
+        end
+    end)
+    if has then return true end
+
+    pcall(function()
+        local Items = PlayerGui:FindFirstChild("Items")
+        local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+        if not Holding then return end
+        for _, v in pairs(Holding:GetChildren()) do
+            if v.Name ~= "Folder" and v.Name ~= "UIGridLayout" and v.Name ~= "ItemTemplate" then
+                local itemType = v:GetAttribute("ItemType")
+                if itemType and string.lower(tostring(itemType)) == "fish" then
+                    has = true
+                    break
+                end
+            end
+        end
+    end)
+    return has
+end
+
+local function doSellAllFish()
+    local ok1 = pcall(function()
+        if Net_Original then
+            Net_Original.get("sell_all_fish")
+        end
+    end)
+    local ok2 = pcall(function()
+        local Net = require(game:GetService("ReplicatedStorage").Modules.Core.Net)
+        Net.get("sell_all_fish")
+    end)
+    return ok1 or ok2
+end
+
+local function getDistanceToSell()
+    local char = LocalPlayer.Character
+    if not char then return 9999 end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return 9999 end
+    return (root.Position - SELL_POSITION).Magnitude
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.35)
+        if autoSellEnabled then
+            local dist = getDistanceToSell()
+            local isNear = dist <= SELL_DISTANCE
+
+            if isNear and not wasNearSell then
+                if playerHasFish() then
+                    task.wait(0.25)
+                    doSellAllFish()
+                    showEffect("💰 AutoSell: Sell request sent!", "success")
+                    task.wait(0.4)
+                end
+                wasNearSell = true
+            elseif not isNear then
+                wasNearSell = false
+            end
+        else
+            wasNearSell = false
+        end
+    end
+end)
+
+local fishStats = {
+    totalFish = 0,
+    fishCaught = {},
+    sessionStart = os.time(),
+}
+local fishRecorded = {}
+local statsUpdateFunc = nil
+
+local function updateFishStats(fishName)
+    if not fishName or fishName == "" then return end
+    fishStats.totalFish = fishStats.totalFish + 1
+    fishStats.fishCaught[fishName] = (fishStats.fishCaught[fishName] or 0) + 1
+    showEffect("🐟 تم صيد: " .. fishName .. " (×" .. fishStats.fishCaught[fishName] .. ")", "success")
+    if statsUpdateFunc then statsUpdateFunc() end
+    if webhookAutoNotify then
+        onFishCaughtForWebhook(fishName)
+    end
+end
+
+local function hookFishStats()
+    local function checkInventoryForFish()
+        pcall(function()
+            if not ItemUtils or not Data then return end
+            ItemUtils.iterate_through_items(Data, function(itemData)
+                if not itemData or not itemData.name then return end
+                if fishList[itemData.name] then
+                    local key = itemData.name .. "_" .. (itemData.guid or "")
+                    if not fishRecorded[key] then
+                        fishRecorded[key] = true
+                        updateFishStats(itemData.name)
+                    end
+                end
+            end)
+        end)
+    end
+
+    if Data and Data.hook then
+        Data.hook("items", function()
+            checkInventoryForFish()
+            if statsUpdateFunc then statsUpdateFunc() end
+        end)
+    end
+
+    if Data and Data.item_added then
+        local old = Data.item_added
+        Data.item_added = function(itemData)
+            if old then old(itemData) end
+            if itemData and itemData.name and fishList[itemData.name] then
+                local key = itemData.name .. "_" .. (itemData.guid or "")
+                if not fishRecorded[key] then
+                    fishRecorded[key] = true
+                    updateFishStats(itemData.name)
+                end
+            end
+            if statsUpdateFunc then statsUpdateFunc() end
+        end
+    end
+
+    task.delay(1.5, checkInventoryForFish)
+end
+
+local currentKey = Enum.KeyCode.Q
+local isWaitingForKey = false
+local autoFarmThread = nil
+local SliderMinigame = nil
+local autoSkipSliderEnabled = false
+autoBuyBaitEnabled = false
+BAIT_SHOP_POS = Vector3.new(-135.954, 251.811, 154.499)
+BAIT_BUY_MAX_DIST = 25
+BAIT_TIERS = {
+    {Name = "PrawntecUltimate", Level = 45},
+    {Name = "PrawntecPro", Level = 30},
+    {Name = "PrawntecRegular", Level = 25},
+    {Name = "WormtecUltimate", Level = 15},
+    {Name = "WormtecPro", Level = 8},
+    {Name = "WormtecRegular", Level = 1},
+}
+
+local CONFIG_FILE = "RealGUI_Configs.json"
+local savedConfigs = {}
+
+local multiSpotBtn_ref, autoBtn_ref, autoSkipBtn_ref, keyDisplay_ref
+local statusLabel_ref, toggleDropBtn_ref, autoSellBtn_ref
+local delayLabel_ref, dropSliderFill_ref, dropSliderKnob_ref
+local urlBox_ref, notifyBtn_ref
+local scaleLabel_ref, scaleSliderFill_ref, scaleSliderKnob_ref
+local fishButtons = {}
+local webhookFishButtons = {}
+local updateSwitchSlider_ref
+local applyScale_ref
+
+local function hookSliderTries()
+    if not SliderMinigame then return end
+    pcall(function()
+        if SliderMinigame.tries and SliderMinigame.tries.set then
+            SliderMinigame.tries.set(99)
+        end
+    end)
+    pcall(function()
+        if SliderMinigame.enabled and SliderMinigame.enabled.hook then
+            SliderMinigame.enabled.hook(function(isOn)
+                if isOn and SliderMinigame.tries and SliderMinigame.tries.set then
+                    SliderMinigame.tries.set(99)
+                end
+            end)
+        end
+    end)
+end
+
+local function findModules()
+    for _, module in ipairs(game:GetDescendants()) do
+        if module:IsA("ModuleScript") and module.Name == "SliderMinigame" then
+            local ok, result = pcall(require, module)
+            if ok then
+                SliderMinigame = result
+                hookSliderTries()
+            end
+            break
+        end
+    end
+end
+
+local function QuickWin()
+    if SliderMinigame and SliderMinigame.win then
+        if type(SliderMinigame.win) == "table" and SliderMinigame.win.Fire then
+            SliderMinigame.win:Fire(true)
+            pcall(function()
+                clearAllFishMarkers()
+            end)
+            return true
+        end
+    end
+    return false
+end
+
+local function isSliderOpen()
+    if SliderMinigame and SliderMinigame.enabled and SliderMinigame.enabled.get then
+        return SliderMinigame.enabled.get() == true
+    end
+    return false
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.15)
+        if autoSkipSliderEnabled and isSliderOpen() then
+            local hooked = getHookedFishName()
+            if isSkipTarget(hooked) then
+                task.wait(0.05)
+            else
+                task.wait(1.0)
+                hooked = getHookedFishName() or hooked
+                if autoSkipSliderEnabled and isSliderOpen() and not isSkipTarget(hooked) and not isSkippingFish then
+                    QuickWin()
+                end
+            end
+            while autoSkipSliderEnabled and isSliderOpen() do
+                task.wait(0.05)
+            end
+        end
+    end
+end)
+
+function getFishingLevelSafe()
+    local level = 1
+    pcall(function()
+        local DataMod = Data or require(ReplicatedStorage.Modules.Core.Data)
+        local XPFormula = require(ReplicatedStorage.Modules.Game.Skills.XPFormula)
+        local fishingXP = 0
+        if DataMod and DataMod.xp then
+            for key, val in pairs(DataMod.xp) do
+                if string.lower(tostring(key)) == "fishing" or string.find(string.lower(tostring(key)), "fish") then
+                    fishingXP = val
+                    break
+                end
+            end
+            if XPFormula and XPFormula.xp_to_level then
+                level = XPFormula.xp_to_level(fishingXP) or 1
+            end
+        end
+    end)
+    return level
+end
+
+function getBestBaitName()
+    local fishingLevel = getFishingLevelSafe()
+    for _, bait in ipairs(BAIT_TIERS) do
+        if fishingLevel >= bait.Level then
+            return bait.Name
+        end
+    end
+    return "WormtecRegular"
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.25)
+        if autoBuyBaitEnabled then
+            pcall(function()
+                local Character = LocalPlayer.Character
+                local root = Character and Character:FindFirstChild("HumanoidRootPart")
+                if not root then return end
+
+                local dist = (root.Position - BAIT_SHOP_POS).Magnitude
+                if dist > BAIT_BUY_MAX_DIST then
+                    return
+                end
+
+                local zone = Workspace:FindFirstChild("ShopZone_Hardware")
+                if not zone then
+                    zone = Workspace:WaitForChild("ShopZone_Hardware", 1)
+                end
+                if not zone then return end
+
+                local Net = require(ReplicatedStorage.Modules.Core.Net)
+                Net.get("purchase_consumable", zone, "PrawntecUltimate")
+            end)
+        end
+    end
+end)
+
+local function StartAutoFarm()
+    if autoFarmActive or __rg_farmLock then return end
+    __rg_farmLock = true
+    autoFarmActive = true
+    currentSpotIndex = 1
+    currentSpotCatches = 0
+    __rg_casting = false
+    isSkippingFish = false
+    __rg_lastCast = 0
+    __rg_noAction = os.clock()
+    showEffect("Auto Farm ON", "success")
+
+    if autoFarmThread then
+        pcall(function() task.cancel(autoFarmThread) end)
+        autoFarmThread = nil
+    end
+
+    autoFarmThread = task.spawn(function()
+        while autoFarmActive do
+            local cycleOk = pcall(function()
+                if not autoFarmActive then return end
+
+                if not hasBaitInInventory() then
+                    showEffect("ما معك طعم", "error")
+                    task.wait(2)
+                    return
+                end
+
+                while autoFarmActive and __rg_casting do
+                    task.wait(0.1)
+                end
+                if not autoFarmActive then return end
+
+                __rg_lastCast = 0
+                local threw = CastRod()
+                if not threw then
+                    task.wait(0.1)
+                    return
+                end
+
+                local gotBite = false
+                local safety = os.clock() + 45
+                while autoFarmActive and os.clock() < safety do
+                    if isSliderOpen() then
+                        gotBite = true
+                        break
+                    end
+                    local hookedEarly = getHookedFishName()
+                    if hookedEarly then
+                        showCaughtFishImage(hookedEarly)
+                        if isSkipTarget(hookedEarly) and not isSkippingFish then
+                            if skipDelay > 0 then task.wait(skipDelay) end
+                            showCaughtFishImage(hookedEarly)
+                            doSkipHookedFish(hookedEarly, true)
+                            clearAllFishMarkers()
+                            advanceSpotAfterCatch()
+                            return
+                        end
+                    end
+                    if not isPlayerCastOut() then
+                        break
+                    end
+                    task.wait(0.08)
+                end
+
+                if not autoFarmActive then return end
+
+                if gotBite then
+                    local hooked = getHookedFishName()
+                    if hooked then showCaughtFishImage(hooked) end
+
+                    if hooked and isSkipTarget(hooked) then
+                        if skipDelay > 0 then task.wait(skipDelay) end
+                        if autoFarmActive then
+                            showCaughtFishImage(hooked)
+                            doSkipHookedFish(hooked, true)
+                            clearAllFishMarkers()
+                        end
+                    else
+                        task.wait(1)
+                        if isSliderOpen() then QuickWin() end
+                        local waitClose = 0
+                        while autoFarmActive and isSliderOpen() and waitClose < 2.5 do
+                            task.wait(0.05)
+                            waitClose = waitClose + 0.05
+                        end
+                        clearAllFishMarkers()
+                    end
+                    advanceSpotAfterCatch()
+                end
+
+            end)
+
+            if not cycleOk then
+                __rg_casting = false
+                task.wait(0.3)
+            end
+        end
+    end)
+    task.delay(0.2, function() __rg_farmLock = false end)
+end
+
+local function StopAutoFarm()
+    if __rg_farmLock and not autoFarmActive then return end
+    if not autoFarmActive then return end
+    __rg_farmLock = true
+    autoFarmActive = false
+    __rg_casting = false
+    isSkippingFish = false
+    if autoFarmThread then
+        pcall(function() task.cancel(autoFarmThread) end)
+        autoFarmThread = nil
+    end
+    pcall(function()
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then root.Anchored = false end
+    end)
+    currentSpotIndex = 1
+    currentSpotCatches = 0
+    showEffect("Auto Farm OFF", "error")
+    task.delay(0.15, function() __rg_farmLock = false end)
+end
+
+local function ToggleAutoFarm()
+    if __rg_farmLock then return end
+    if autoFarmActive then StopAutoFarm() else StartAutoFarm() end
+end
+
+local REPORT_WEBHOOK = "https://discord.com/api/webhooks/1535122052179169353/MsBjYiamwqyxc3zx-O30je1naGpb2wStOQj45TnRyxjotSpxHOtItqkn-ACoYpWITSTt"
+local lastReportTime = 0
+local REPORT_COOLDOWN = 30 * 60
+
+local webhookFishSelected = {}
+for name in pairs(fishList) do
+    webhookFishSelected[name] = false
+end
+local webhookURL = ""
+local webhookAutoNotify = false
+local lastWebhookNotify = {}
+
+local function sendWebhookMessage(content)
+    if webhookURL == "" or #webhookURL < 20 then return false end
+    local success = pcall(function()
+        local payload = HttpService:JSONEncode({
+            content = content
+        })
+        if request then
+            request({
+                Url = webhookURL,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = payload
+            })
+        elseif syn and syn.request then
+            syn.request({
+                Url = webhookURL,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = payload
+            })
+        end
+    end)
+    return success
+end
+
+local function onFishCaughtForWebhook(fishName)
+    if not webhookAutoNotify then return end
+    if not webhookFishSelected[fishName] then return end
+    local now = os.time()
+    if lastWebhookNotify[fishName] and (now - lastWebhookNotify[fishName]) < 8 then return end
+    lastWebhookNotify[fishName] = now
+    sendWebhookMessage("i got " .. string.lower(fishName))
+end
+
+local tabsData = {
+    {Name = "FARM",             Order = 1},
+    {Name = "Fish Manger",      Order = 2},
+    {Name = "Statistics",       Order = 3},
+    {Name = "Report",           Order = 4},
+    {Name = "Webhook Discord",  Order = 5},
+    {Name = "Dev'Real",         Order = 6},
+    {Name = "تنقيص الحجم",      Order = 7},
+    {Name = "Config",           Order = 8},
+}
+
+local tabButtons = {}
+local tabPages = {}
+
+local function selectTab(tabName)
+    for name, page in pairs(tabPages) do
+        page.Visible = (name == tabName)
+    end
+    for name, btn in pairs(tabButtons) do
+        if name == tabName then
+            tween(btn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.AccentDim, BackgroundTransparency = 0})
+            if btn:FindFirstChild("TextLabel") then
+                btn.TextLabel.TextColor3 = THEME.Text
+            end
+        else
+            tween(btn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.PanelLight, BackgroundTransparency = 0.15})
+            if btn:FindFirstChild("TextLabel") then
+                btn.TextLabel.TextColor3 = THEME.SubText
+            end
+        end
+    end
+end
+
+for _, tabInfo in ipairs(tabsData) do
+    local TabBtn = new("TextButton", {
+        Name = tabInfo.Name .. "Button",
+        Size = UDim2.new(1, 0, 0, 32),
+        BackgroundColor3 = THEME.PanelLight,
+        BackgroundTransparency = 0.15,
+        AutoButtonColor = false,
+        Text = "",
+        LayoutOrder = tabInfo.Order,
+        ZIndex = 3,
+        Parent = TabButtonHolder,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = TabBtn})
+    new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = TabBtn})
+
+    local TabBtnLabel = new("TextLabel", {
+        Name = "TextLabel",
+        Size = UDim2.new(1, -16, 1, 0),
+        Position = UDim2.fromOffset(10, 0),
+        BackgroundTransparency = 1,
+        Font = FONT_REGULAR,
+        Text = tabInfo.Name,
+        TextColor3 = THEME.SubText,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextSize = 13,
+        ZIndex = 4,
+        Parent = TabBtn,
+    })
+
+    tabButtons[tabInfo.Name] = TabBtn
+
+    local TabPage = new("ScrollingFrame", {
+        Name = tabInfo.Name .. "Page",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 3,
+        ScrollBarImageColor3 = THEME.AccentDim,
+        CanvasSize = UDim2.fromScale(0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Visible = false,
+        ZIndex = 2,
+        Parent = ContentArea,
+    })
+
+    new("UIPadding", {
+        PaddingTop = UDim.new(0, 14),
+        PaddingLeft = UDim.new(0, 14),
+        PaddingRight = UDim.new(0, 14),
+        PaddingBottom = UDim.new(0, 20),
+        Parent = TabPage,
+    })
+
+    tabPages[tabInfo.Name] = TabPage
+
+    TabBtn.MouseButton1Click:Connect(function()
+        selectTab(tabInfo.Name)
+    end)
+end
+
+local function setupFarmTab()
+    local page = tabPages["FARM"]
+
+    local title = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 26),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "FARM",
+        TextColor3 = THEME.Text,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextSize = 18,
+        Parent = page,
+    })
+    addTextStroke(title, 0.4)
+
+    local spotTitle = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 22),
+        Position = UDim2.fromOffset(0, 28),
+        BackgroundTransparency = 1,
+        Font = FONT_HEAVY,
+        Text = "اختار الوزنية",
+        TextColor3 = THEME.Text,
+        TextSize = 18,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+
+    local spotRow = new("Frame", {
+        Size = UDim2.new(1, 0, 0, 34),
+        Position = UDim2.fromOffset(0, 54),
+        BackgroundTransparency = 1,
+        Parent = page,
+    })
+    new("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        Padding = UDim.new(0, 8),
+        Parent = spotRow,
+    })
+
+    local spotBtns = {}
+    local function refreshSpotButtons()
+        local enabled = getEnabledSpotList()
+        multiSpotEnabled = #enabled > 1
+        local hasCur = false
+        for _, idx in ipairs(enabled) do
+            if idx == currentSpotIndex then hasCur = true break end
+        end
+        if not hasCur then currentSpotIndex = enabled[1] end
+        for i, btn in pairs(spotBtns) do
+            if enabledSpots[i] then
+                btn.BackgroundColor3 = Color3.fromRGB(20, 130, 70)
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+            end
+            btn.Text = "وزنية " .. i
+        end
+    end
+
+    for i = 1, #CAST_POSITIONS do
+        local btn = new("TextButton", {
+            Name = "SpotBtn" .. i,
+            Size = UDim2.new(1 / #CAST_POSITIONS, -6, 1, 0),
+            BackgroundColor3 = Color3.fromRGB(70, 70, 90),
+            AutoButtonColor = false,
+            Font = FONT_HEAVY,
+            Text = "وزنية " .. i,
+            TextColor3 = THEME.Text,
+            TextSize = 13,
+            Parent = spotRow,
+        })
+        new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = btn})
+        new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = btn})
+        spotBtns[i] = btn
+        btn.MouseButton1Click:Connect(function()
+            local enabled = getEnabledSpotList()
+            if enabledSpots[i] and #enabled <= 1 then
+                showEffect("لازم وزنية واحدة على الأقل", "error")
+                return
+            end
+            enabledSpots[i] = not enabledSpots[i]
+            currentSpotCatches = 0
+            refreshSpotButtons()
+            if enabledSpots[i] then
+                currentSpotIndex = i
+                showEffect("وزنية رقم " .. i, "success")
+            else
+                showEffect("وزنية رقم " .. i .. " OFF", "error")
+            end
+        end)
+    end
+    refreshSpotButtons()
+    multiSpotBtn_ref = spotBtns[1]
+
+    local switchLabel = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 22),
+        Position = UDim2.fromOffset(0, 96),
+        BackgroundTransparency = 1,
+        Font = FONT_HEAVY,
+        Text = "التبديل بين الوزنيات بعد كل: 1 صيدة",
+        TextColor3 = THEME.Text,
+        TextSize = 16,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+
+    local switchSliderBg = new("Frame", {
+        Name = "SliderTrack",
+        Size = UDim2.new(1, 0, 0, 10),
+        Position = UDim2.fromOffset(0, 122),
+        BackgroundColor3 = THEME.PanelLight,
+        BorderSizePixel = 0,
+        Active = true,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = switchSliderBg})
+
+    local switchSliderFill = new("Frame", {
+        Name = "SliderFill",
+        Size = UDim2.new(0, 0, 1, 0),
+        BackgroundColor3 = THEME.Accent,
+        BorderSizePixel = 0,
+        Parent = switchSliderBg,
+    })
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = switchSliderFill})
+
+    local switchSliderKnob = new("Frame", {
+        Name = "SliderKnob",
+        Size = UDim2.fromOffset(18, 18),
+        Position = UDim2.new(0, -4, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5),
+        BackgroundColor3 = THEME.Text,
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Active = true,
+        Parent = switchSliderBg,
+    })
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = switchSliderKnob})
+    new("UIStroke", {Color = THEME.Accent, Thickness = 2, Parent = switchSliderKnob})
+
+    local SWITCH_MIN, SWITCH_MAX = 1, 10
+    local slidingSwitch = false
+    local function updateSwitchSlider(value)
+        local v = math.clamp(math.floor(value + 0.5), SWITCH_MIN, SWITCH_MAX)
+        catchesPerSpot = v
+        local percent = (v - SWITCH_MIN) / (SWITCH_MAX - SWITCH_MIN)
+        switchSliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        switchSliderKnob.Position = UDim2.new(percent, -9, 0.5, 0)
+        switchLabel.Text = "التبديل بين الوزنيات بعد كل: " .. v .. " صيدة"
+    end
+    updateSwitchSlider_ref = updateSwitchSlider
+    updateSwitchSlider(1)
+
+    local function getSwitchValueFromX(x)
+        local absPos = switchSliderBg.AbsolutePosition.X
+        local absSize = switchSliderBg.AbsoluteSize.X
+        if absSize <= 0 then return catchesPerSpot end
+        local percent = math.clamp((x - absPos) / absSize, 0, 1)
+        return SWITCH_MIN + percent * (SWITCH_MAX - SWITCH_MIN)
+    end
+
+    switchSliderBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            slidingSwitch = true
+            slidingAny = true
+            updateSwitchSlider(getSwitchValueFromX(input.Position.X))
+        end
+    end)
+    switchSliderKnob.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            slidingSwitch = true
+            slidingAny = true
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if slidingSwitch and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSwitchSlider(getSwitchValueFromX(input.Position.X))
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            slidingSwitch = false
+            slidingAny = false
+        end
+    end)
+
+    local autoBtn = new("TextButton", {
+        Name = "AutoFarmBtn",
+        Size = UDim2.new(1, 0, 0, 48),
+        Position = UDim2.fromOffset(0, 145),
+        BackgroundColor3 = Color3.fromRGB(210, 105, 0),
+        AutoButtonColor = false,
+        Font = FONT_HEAVY,
+        Text = "Auto Farm  [ OFF ]",
+        TextColor3 = THEME.Text,
+        TextSize = 16,
+        Parent = page,
+    })
+    autoBtn_ref = autoBtn
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = autoBtn})
+    new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = autoBtn})
+
+    autoBtn.MouseButton1Click:Connect(function()
+        ToggleAutoFarm()
+        if autoFarmActive then
+            autoBtn.Text = "Auto Farm  [ ON ]"
+            autoBtn.BackgroundColor3 = THEME.GreenDim
+            tween(autoBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(20, 140, 70)})
+        else
+            autoBtn.Text = "Auto Farm  [ OFF ]"
+            autoBtn.BackgroundColor3 = Color3.fromRGB(210, 105, 0)
+        end
+    end)
+
+    local autoSkipBtn = new("TextButton", {
+        Name = "AutoSkipSliderBtn",
+        Size = UDim2.new(1, 0, 0, 42),
+        Position = UDim2.fromOffset(0, 200),
+        BackgroundColor3 = Color3.fromRGB(80, 60, 120),
+        AutoButtonColor = false,
+        Font = FONT_HEAVY,
+        Text = "تسكيب السلايدر تلقائي  [ OFF ]",
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Parent = page,
+    })
+    autoSkipBtn_ref = autoSkipBtn
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = autoSkipBtn})
+    new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = autoSkipBtn})
+
+    autoSkipBtn.MouseButton1Click:Connect(function()
+        autoSkipSliderEnabled = not autoSkipSliderEnabled
+        if autoSkipSliderEnabled then
+            autoSkipBtn.Text = "تسكيب السلايدر تلقائي  [ ON ]"
+            autoSkipBtn.BackgroundColor3 = Color3.fromRGB(20, 130, 70)
+            showEffect("✅ تسكيب السلايدر تلقائي ON", "success")
+        else
+            autoSkipBtn.Text = "تسكيب السلايدر تلقائي  [ OFF ]"
+            autoSkipBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 120)
+            showEffect("تسكيب السلايدر تلقائي OFF", "error")
+        end
+    end)
+
+    local keyLabel = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 20),
+        Position = UDim2.fromOffset(0, 255),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "Keybind (Skip Slider)",
+        TextColor3 = THEME.SubText,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+
+    local keyDisplay = new("TextLabel", {
+        Size = UDim2.new(0.45, 0, 0, 42),
+        Position = UDim2.fromOffset(0, 280),
+        BackgroundColor3 = THEME.PanelLight,
+        Font = FONT_HEAVY,
+        Text = "Q",
+        TextColor3 = THEME.Text,
+        TextSize = 22,
+        Parent = page,
+    })
+    keyDisplay_ref = keyDisplay
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = keyDisplay})
+    new("UIStroke", {Color = THEME.Accent, Thickness = 1, Transparency = 0.4, Parent = keyDisplay})
+
+    local changeKeyBtn = new("TextButton", {
+        Size = UDim2.new(0.5, -8, 0, 42),
+        Position = UDim2.new(0.5, 8, 0, 280),
+        BackgroundColor3 = THEME.PanelLight,
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = "🔄 Change Key",
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = changeKeyBtn})
+    new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = changeKeyBtn})
+
+    changeKeyBtn.MouseButton1Click:Connect(function()
+        if isWaitingForKey then return end
+        isWaitingForKey = true
+        changeKeyBtn.Text = "⌨️ Press any key..."
+        keyDisplay.Text = "?"
+
+        local connection
+        connection = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                currentKey = input.KeyCode
+                keyDisplay.Text = tostring(currentKey.Name)
+                changeKeyBtn.Text = "🔄 Change Key"
+                isWaitingForKey = false
+                connection:Disconnect()
+                showEffect("Key set to: " .. currentKey.Name, "success")
+            end
+        end)
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == currentKey then
+            QuickWin()
+        end
+    end)
+
+    local info = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 70),
+        Position = UDim2.fromOffset(0, 335),
+        BackgroundTransparency = 1,
+        Font = FONT_REGULAR,
+        Text = "• التيك حقي : 3z.soon\n• \n• تسكيب سلايدر سوا كان صرافات او سمك\n• مثال: 2 = يصيد مرتين بكل وزنية ثم ينقل",
+        TextColor3 = THEME.SubText,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        Parent = page,
+    })
+end
+setupFarmTab()
+
+local function setupFishManagerTab()
+    local page = tabPages["Fish Manger"]
+
+    local title = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 26),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "Fish Manager",
+        TextColor3 = THEME.Text,
+        TextSize = 18,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+    addTextStroke(title, 0.4)
+
+    local statusLabel = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 24),
+        Position = UDim2.fromOffset(0, 32),
+        BackgroundTransparency = 1,
+        Font = FONT_HEAVY,
+        Text = "تسكيب السمك: OFF",
+        TextColor3 = THEME.Red,
+        TextSize = 16,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+    statusLabel_ref = statusLabel
+
+    local fishScroll = new("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 0, 155),
+        Position = UDim2.fromOffset(0, 60),
+        BackgroundColor3 = THEME.Panel,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 4,
+        ScrollBarImageColor3 = THEME.AccentDim,
+        CanvasSize = UDim2.fromOffset(0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = fishScroll})
+    new("UIPadding", {
+        PaddingTop = UDim.new(0, 6),
+        PaddingLeft = UDim.new(0, 6),
+        PaddingRight = UDim.new(0, 6),
+        Parent = fishScroll,
+    })
+    new("UIListLayout", {
+        Padding = UDim.new(0, 5),
+        Parent = fishScroll,
+    })
+
+    local function updateFishBtn(btn, name)
+        if skipFishSelected[name] then
+            btn.BackgroundColor3 = Color3.fromRGB(140, 30, 30)
+            btn.Text = "  ⏭️  " .. name .. "  [يتخطى]"
+            btn.TextColor3 = THEME.Text
+        else
+            btn.BackgroundColor3 = THEME.PanelLight
+            btn.Text = "  ⬜  " .. name .. "  [يصيد]"
+            btn.TextColor3 = THEME.SubText
+        end
+    end
+
+    local sortedFish = getOrderedFishNames()
+
+    for _, name in ipairs(sortedFish) do
+        local btn = new("TextButton", {
+            Size = UDim2.new(1, -4, 0, 32),
+            BackgroundColor3 = THEME.PanelLight,
+            AutoButtonColor = false,
+            Font = FONT_REGULAR,
+            Text = "",
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = fishScroll,
+        })
+        new("UICorner", {CornerRadius = UDim.new(0, 7), Parent = btn})
+        updateFishBtn(btn, name)
+        fishButtons[name] = btn
+
+        btn.MouseButton1Click:Connect(function()
+            skipFishSelected[name] = not skipFishSelected[name]
+            updateFishBtn(btn, name)
+        end)
+    end
+
+    __rg_skipLock = false
+    local toggleBtn = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 34),
+        Position = UDim2.fromOffset(0, 224),
+        BackgroundColor3 = Color3.fromRGB(0, 140, 60),
+        AutoButtonColor = false,
+        Font = FONT_HEAVY,
+        Text = "تشغيل تسكيب السمك",
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Parent = page,
+    })
+    toggleDropBtn_ref = toggleBtn
+    new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = toggleBtn})
+
+    toggleBtn.MouseButton1Click:Connect(function()
+        if __rg_skipLock then return end
+        __rg_skipLock = true
+        skipBadFishEnabled = not skipBadFishEnabled
+        isSkippingFish = false
+        if skipBadFishEnabled then
+            toggleBtn.Text = "إيقاف تسكيب السمك"
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+            statusLabel.Text = "تسكيب السمك: ON"
+            statusLabel.TextColor3 = THEME.Green
+            showEffect("تسكيب السمك ON", "success")
+        else
+            toggleBtn.Text = "تشغيل تسكيب السمك"
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 60)
+            statusLabel.Text = "تسكيب السمك: OFF"
+            statusLabel.TextColor3 = THEME.Red
+            showEffect("تسكيب السمك OFF", "error")
+        end
+        task.delay(0.3, function() __rg_skipLock = false end)
+    end)
+
+    local selectAllBtn = new("TextButton", {
+        Size = UDim2.new(0.48, 0, 0, 28),
+        Position = UDim2.fromOffset(0, 266),
+        BackgroundColor3 = THEME.Blue,
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = "تحديد الكل للتسكيب",
+        TextColor3 = THEME.Text,
+        TextSize = 12,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = selectAllBtn})
+
+    local deselectBtn = new("TextButton", {
+        Size = UDim2.new(0.48, 0, 0, 28),
+        Position = UDim2.new(0.52, 0, 0, 266),
+        BackgroundColor3 = Color3.fromRGB(160, 40, 40),
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = "إلغاء الكل",
+        TextColor3 = THEME.Text,
+        TextSize = 12,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = deselectBtn})
+
+    selectAllBtn.MouseButton1Click:Connect(function()
+        for name in pairs(skipFishSelected) do skipFishSelected[name] = true end
+        for name, btn in pairs(fishButtons) do
+            if btn and btn.Parent then updateFishBtn(btn, name) end
+        end
+    end)
+
+    deselectBtn.MouseButton1Click:Connect(function()
+        for name in pairs(skipFishSelected) do skipFishSelected[name] = false end
+        for name, btn in pairs(fishButtons) do
+            if btn and btn.Parent then updateFishBtn(btn, name) end
+        end
+    end)
+
+    local delayLabel = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 16),
+        Position = UDim2.fromOffset(0, 304),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "وقت التسكيب: 0s",
+        TextColor3 = THEME.Text,
+        TextSize = 17,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+    delayLabel_ref = delayLabel
+
+    local sliderBg = new("Frame", {
+        Name = "SliderTrack",
+        Size = UDim2.new(1, 0, 0, 10),
+        Position = UDim2.fromOffset(0, 326),
+        BackgroundColor3 = THEME.PanelLight,
+        BorderSizePixel = 0,
+        Active = true,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = sliderBg})
+
+    local sliderFill = new("Frame", {
+        Name = "SliderFill",
+        Size = UDim2.new(0, 0, 1, 0),
+        BackgroundColor3 = THEME.Accent,
+        BorderSizePixel = 0,
+        Parent = sliderBg,
+    })
+    dropSliderFill_ref = sliderFill
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = sliderFill})
+
+    local sliderKnob = new("Frame", {
+        Name = "SliderKnob",
+        Size = UDim2.fromOffset(18, 18),
+        Position = UDim2.new(0, -4, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5),
+        BackgroundColor3 = THEME.Text,
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Active = true,
+        Parent = sliderBg,
+    })
+    dropSliderKnob_ref = sliderKnob
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = sliderKnob})
+    new("UIStroke", {Color = THEME.Accent, Thickness = 2, Parent = sliderKnob})
+
+    local SLIDER_MIN = 0
+    local SLIDER_MAX = 15
+    local sliding = false
+
+    local function updateSliderVisual(value)
+        local percent = math.clamp((value - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN), 0, 1)
+        sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        sliderKnob.Position = UDim2.new(percent, -9, 0.5, 0)
+        delayLabel.Text = string.format("وقت التسكيب: %ds", math.floor(value + 0.5))
+        skipDelay = math.floor(value + 0.5)
+    end
+
+    updateSliderVisual(0)
+
+    local function getValueFromX(x)
+        local absPos = sliderBg.AbsolutePosition.X
+        local absSize = sliderBg.AbsoluteSize.X
+        local percent = math.clamp((x - absPos) / absSize, 0, 1)
+        return SLIDER_MIN + percent * (SLIDER_MAX - SLIDER_MIN)
+    end
+
+    sliderBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            sliding = true
+            slidingAny = true
+            updateSliderVisual(getValueFromX(input.Position.X))
+        end
+    end)
+
+    sliderKnob.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            sliding = true
+            slidingAny = true
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSliderVisual(getValueFromX(input.Position.X))
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            sliding = false
+            slidingAny = false
+        end
+    end)
+
+    local dropStatus = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 22),
+        Position = UDim2.fromOffset(0, 350),
+        BackgroundTransparency = 1,
+        Font = FONT_HEAVY,
+        Text = "رمي الاسماك: OFF",
+        TextColor3 = THEME.Red,
+        TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+
+    local dropScroll = new("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 0, 130),
+        Position = UDim2.fromOffset(0, 376),
+        BackgroundColor3 = THEME.Panel,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 4,
+        ScrollBarImageColor3 = THEME.AccentDim,
+        CanvasSize = UDim2.fromOffset(0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = dropScroll})
+    new("UIPadding", {
+        PaddingTop = UDim.new(0, 6),
+        PaddingLeft = UDim.new(0, 6),
+        PaddingRight = UDim.new(0, 6),
+        Parent = dropScroll,
+    })
+    new("UIListLayout", {Padding = UDim.new(0, 4), Parent = dropScroll})
+
+    local dropButtons = {}
+
+    local function updateDropBtn(btn, name)
+        if dropFishSelected[name] then
+            btn.BackgroundColor3 = THEME.GreenDim
+            btn.Text = "  ✅  " .. name .. "  [يرمي]"
+            btn.TextColor3 = THEME.Green
+        else
+            btn.BackgroundColor3 = THEME.PanelLight
+            btn.Text = "  ⬜  " .. name .. "  [يبقي]"
+            btn.TextColor3 = THEME.SubText
+        end
+    end
+
+    for _, name in ipairs(getOrderedFishNames()) do
+        local btn = new("TextButton", {
+            Size = UDim2.new(1, -4, 0, 28),
+            BackgroundColor3 = THEME.PanelLight,
+            AutoButtonColor = false,
+            Font = FONT_REGULAR,
+            Text = "",
+            TextSize = 13,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = dropScroll,
+        })
+        new("UICorner", {CornerRadius = UDim.new(0, 7), Parent = btn})
+        updateDropBtn(btn, name)
+        dropButtons[name] = btn
+        btn.MouseButton1Click:Connect(function()
+            dropFishSelected[name] = not dropFishSelected[name]
+            updateDropBtn(btn, name)
+        end)
+    end
+
+    local dropToggle = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 32),
+        Position = UDim2.fromOffset(0, 514),
+        BackgroundColor3 = Color3.fromRGB(0, 140, 60),
+        AutoButtonColor = false,
+        Font = FONT_HEAVY,
+        Text = "تشغيل رمي الاسماك",
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = dropToggle})
+
+    dropToggle.MouseButton1Click:Connect(function()
+        fishAutoDropEnabled = not fishAutoDropEnabled
+        if fishAutoDropEnabled then
+            dropToggle.Text = "إيقاف رمي الاسماك"
+            dropToggle.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+            dropStatus.Text = "رمي الاسماك: ON"
+            dropStatus.TextColor3 = THEME.Green
+            task.spawn(autoDropFish)
+        else
+            dropToggle.Text = "تشغيل رمي الاسماك"
+            dropToggle.BackgroundColor3 = Color3.fromRGB(0, 140, 60)
+            dropStatus.Text = "رمي الاسماك: OFF"
+            dropStatus.TextColor3 = THEME.Red
+        end
+    end)
+
+    local dropAll = new("TextButton", {
+        Size = UDim2.new(0.48, 0, 0, 26),
+        Position = UDim2.fromOffset(0, 556),
+        BackgroundColor3 = THEME.Blue,
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = "تحديد الكل للرمي",
+        TextColor3 = THEME.Text,
+        TextSize = 12,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = dropAll})
+
+    local dropNone = new("TextButton", {
+        Size = UDim2.new(0.48, 0, 0, 26),
+        Position = UDim2.new(0.52, 0, 0, 556),
+        BackgroundColor3 = Color3.fromRGB(160, 40, 40),
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = "إلغاء الكل",
+        TextColor3 = THEME.Text,
+        TextSize = 12,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = dropNone})
+
+    dropAll.MouseButton1Click:Connect(function()
+        for name in pairs(dropFishSelected) do dropFishSelected[name] = true end
+        for name, btn in pairs(dropButtons) do
+            if btn and btn.Parent then updateDropBtn(btn, name) end
+        end
+    end)
+    dropNone.MouseButton1Click:Connect(function()
+        for name in pairs(dropFishSelected) do dropFishSelected[name] = false end
+        for name, btn in pairs(dropButtons) do
+            if btn and btn.Parent then updateDropBtn(btn, name) end
+        end
+    end)
+
+    local dropDelayLabel = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 16),
+        Position = UDim2.fromOffset(0, 594),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "تأخير الرمي: 0s",
+        TextColor3 = THEME.Text,
+        TextSize = 17,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+
+    local dropTrack = new("Frame", {
+        Name = "SliderTrack",
+        Size = UDim2.new(1, 0, 0, 10),
+        Position = UDim2.fromOffset(0, 616),
+        BackgroundColor3 = THEME.PanelLight,
+        BorderSizePixel = 0,
+        Active = true,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = dropTrack})
+
+    local dropFill = new("Frame", {
+        Name = "SliderFill",
+        Size = UDim2.new(0, 0, 1, 0),
+        BackgroundColor3 = THEME.Accent,
+        BorderSizePixel = 0,
+        Parent = dropTrack,
+    })
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = dropFill})
+
+    local dropKnob = new("Frame", {
+        Name = "SliderKnob",
+        Size = UDim2.fromOffset(18, 18),
+        Position = UDim2.new(0, -4, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5),
+        BackgroundColor3 = THEME.Text,
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Active = true,
+        Parent = dropTrack,
+    })
+    new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = dropKnob})
+    new("UIStroke", {Color = THEME.Accent, Thickness = 2, Parent = dropKnob})
+
+    local DROP_MIN, DROP_MAX = 0, 15
+    local slidingDrop = false
+
+    local function updateDropSlider(value)
+        local v = math.clamp(math.floor(value + 0.5), DROP_MIN, DROP_MAX)
+        dropDelay = v
+        local percent = (v - DROP_MIN) / (DROP_MAX - DROP_MIN)
+        dropFill.Size = UDim2.new(percent, 0, 1, 0)
+        dropKnob.Position = UDim2.new(percent, -9, 0.5, 0)
+        dropDelayLabel.Text = "تأخير الرمي: " .. v .. "s"
+    end
+    updateDropSlider(0)
+
+    local function getDropFromX(x)
+        local absPos = dropTrack.AbsolutePosition.X
+        local absSize = dropTrack.AbsoluteSize.X
+        if absSize <= 0 then return dropDelay end
+        local percent = math.clamp((x - absPos) / absSize, 0, 1)
+        return DROP_MIN + percent * (DROP_MAX - DROP_MIN)
+    end
+
+    dropTrack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            slidingDrop = true
+            slidingAny = true
+            updateDropSlider(getDropFromX(input.Position.X))
+        end
+    end)
+    dropKnob.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            slidingDrop = true
+            slidingAny = true
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if slidingDrop and (input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch) then
+            updateDropSlider(getDropFromX(input.Position.X))
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            slidingDrop = false
+            slidingAny = false
+        end
+    end)
+
+    local autoSellBtn = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        Position = UDim2.fromOffset(0, 646),
+        BackgroundColor3 = Color3.fromRGB(180, 120, 20),
+        AutoButtonColor = false,
+        Font = FONT_HEAVY,
+        Text = "💰 AutoSell  [ OFF ]",
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Parent = page,
+    })
+    autoSellBtn_ref = autoSellBtn
+    new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = autoSellBtn})
+
+    autoSellBtn.MouseButton1Click:Connect(function()
+        autoSellEnabled = not autoSellEnabled
+        if autoSellEnabled then
+            autoSellBtn.Text = "💰 AutoSell  [ ON ]"
+            autoSellBtn.BackgroundColor3 = Color3.fromRGB(20, 140, 70)
+            showEffect("💰 AutoSell ON — قرب من نقطة البيع", "success")
+        else
+            autoSellBtn.Text = "💰 AutoSell  [ OFF ]"
+            autoSellBtn.BackgroundColor3 = Color3.fromRGB(180, 120, 20)
+            wasNearSell = false
+            showEffect("AutoSell OFF", "error")
+        end
+    end)
+
+    local buyBaitBtn = new("TextButton", {
+        Name = "AutoBuyBaitBtn",
+        Size = UDim2.new(1, 0, 0, 36),
+        Position = UDim2.fromOffset(0, 690),
+        BackgroundColor3 = Color3.fromRGB(40, 90, 120),
+        AutoButtonColor = false,
+        Font = FONT_HEAVY,
+        Text = "شراء طعم تلقائي  [ OFF ]",
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = buyBaitBtn})
+
+    buyBaitBtn.MouseButton1Click:Connect(function()
+        autoBuyBaitEnabled = not autoBuyBaitEnabled
+        if autoBuyBaitEnabled then
+            buyBaitBtn.Text = "شراء طعم تلقائي  [ ON ]"
+            buyBaitBtn.BackgroundColor3 = Color3.fromRGB(20, 130, 70)
+            showEffect("شراء طعم ON — اقرب من المحل", "success")
+        else
+            buyBaitBtn.Text = "شراء طعم تلقائي  [ OFF ]"
+            buyBaitBtn.BackgroundColor3 = Color3.fromRGB(40, 90, 120)
+            showEffect("شراء طعم OFF", "error")
+        end
+    end)
+
+    if Data and Data.hook then
+        Data.hook("items", function()
+            if fishAutoDropEnabled then task.spawn(autoDropFish) end
+        end)
+    end
+end
+setupFishManagerTab()
+
+local function setupStatisticsTab()
+    local page = tabPages["Statistics"]
+
+    local title = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 26),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "Statistics",
+        TextColor3 = THEME.Text,
+        TextSize = 18,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+    addTextStroke(title, 0.4)
+
+    local totalLabel = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 36),
+        Position = UDim2.fromOffset(0, 36),
+        BackgroundColor3 = THEME.Panel,
+        Font = FONT_HEAVY,
+        Text = "🐟 Total Fish: 0",
+        TextColor3 = THEME.Gold,
+        TextSize = 16,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = totalLabel})
+    new("UIStroke", {Color = THEME.Gold, Thickness = 1, Transparency = 0.5, Parent = totalLabel})
+
+    local listFrame = new("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 0, 280),
+        Position = UDim2.fromOffset(0, 82),
+        BackgroundColor3 = THEME.Panel,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 4,
+        CanvasSize = UDim2.fromOffset(0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = listFrame})
+    new("UIPadding", {
+        PaddingTop = UDim.new(0, 6),
+        PaddingLeft = UDim.new(0, 6),
+        PaddingRight = UDim.new(0, 6),
+        Parent = listFrame,
+    })
+    new("UIListLayout", {Padding = UDim.new(0, 5), Parent = listFrame})
+
+    local function refreshStats()
+        totalLabel.Text = "🐟 Total Fish: " .. fishStats.totalFish
+
+        for _, child in listFrame:GetChildren() do
+            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("Frame") then
+                child:Destroy()
+            end
+        end
+
+        local sorted = {}
+        for name, count in pairs(fishStats.fishCaught) do
+            if count > 0 then
+                table.insert(sorted, {name = name, count = count})
+            end
+        end
+        table.sort(sorted, function(a, b) return a.count > b.count end)
+
+        if #sorted == 0 then
+            local empty = new("TextLabel", {
+                Size = UDim2.new(1, -4, 0, 40),
+                BackgroundTransparency = 1,
+                Font = FONT_REGULAR,
+                Text = "No fish caught yet...",
+                TextColor3 = THEME.SubText,
+                TextSize = 14,
+                Parent = listFrame,
+            })
+        else
+            for _, data in ipairs(sorted) do
+                local row = new("Frame", {
+                    Size = UDim2.new(1, -4, 0, 44),
+                    BackgroundColor3 = THEME.PanelLight,
+                    BorderSizePixel = 0,
+                    Parent = listFrame,
+                })
+                new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = row})
+
+                local pic = new("ImageLabel", {
+                    Size = UDim2.fromOffset(32, 32),
+                    Position = UDim2.fromOffset(6, 6),
+                    BackgroundColor3 = THEME.Panel,
+                    BorderSizePixel = 0,
+                    ScaleType = Enum.ScaleType.Crop,
+                    Parent = row,
+                })
+                new("UICorner", {CornerRadius = UDim.new(0, 6), Parent = pic})
+                local asset = FISH_IMAGES[data.name]
+                if asset then
+                    local numericId = string.match(asset, "%d+")
+                    local cached = fishImageCacheFolder and fishImageCacheFolder:FindFirstChild(data.name)
+                    if cached and cached:IsA("ImageLabel") and cached.Image ~= "" then
+                        pic.Image = cached.Image
+                    elseif numericId then
+                        pic.Image = string.format("rbxthumb://type=Asset&id=%s&w=150&h=150", numericId)
+                    else
+                        pic.Image = asset
+                    end
+                end
+
+                local nameLbl = new("TextLabel", {
+                    Size = UDim2.new(1, -110, 1, 0),
+                    Position = UDim2.fromOffset(44, 0),
+                    BackgroundTransparency = 1,
+                    Font = FONT_REGULAR,
+                    Text = data.name,
+                    TextColor3 = THEME.Text,
+                    TextSize = 14,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    Parent = row,
+                })
+
+                local countLbl = new("TextLabel", {
+                    Size = UDim2.new(0, 58, 1, 0),
+                    Position = UDim2.new(1, -64, 0, 0),
+                    BackgroundTransparency = 1,
+                    Font = FONT_HEAVY,
+                    Text = "× " .. data.count,
+                    TextColor3 = THEME.Gold,
+                    TextSize = 14,
+                    TextXAlignment = Enum.TextXAlignment.Right,
+                    Parent = row,
+                })
+            end
+        end
+    end
+
+    statsUpdateFunc = refreshStats
+
+    local refreshBtn = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 38),
+        Position = UDim2.fromOffset(0, 375),
+        BackgroundColor3 = THEME.Blue,
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = "🔄 تحديث الإحصائيات",
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = refreshBtn})
+
+    refreshBtn.MouseButton1Click:Connect(function()
+        refreshStats()
+        showEffect("✅ Stats refreshed", "success")
+    end)
+
+    refreshStats()
+end
+setupStatisticsTab()
+
+local function setupReportTab()
+    local page = tabPages["Report"]
+
+    local title = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 26),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "Report a Problem",
+        TextColor3 = THEME.Text,
+        TextSize = 18,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+    addTextStroke(title, 0.4)
+
+    local textBox = new("TextBox", {
+        Size = UDim2.new(1, 0, 0, 140),
+        Position = UDim2.fromOffset(0, 40),
+        BackgroundColor3 = THEME.Panel,
+        Font = FONT_REGULAR,
+        Text = "",
+        PlaceholderText = "اكتب هنا تفاصيل المشكلة بوضوح...",
+        PlaceholderColor3 = THEME.SubText,
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        ClearTextOnFocus = false,
+        MultiLine = true,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = textBox})
+    new("UIPadding", {
+        PaddingTop = UDim.new(0, 8),
+        PaddingLeft = UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10),
+        Parent = textBox,
+    })
+    new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = textBox})
+
+    local sendBtn = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 44),
+        Position = UDim2.fromOffset(0, 200),
+        BackgroundColor3 = Color3.fromRGB(180, 40, 40),
+        AutoButtonColor = false,
+        Font = FONT_HEAVY,
+        Text = "🚀 إرسال البلاغ",
+        TextColor3 = THEME.Text,
+        TextSize = 15,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = sendBtn})
+
+    sendBtn.MouseButton1Click:Connect(function()
+        local now = os.time()
+        if now - lastReportTime < REPORT_COOLDOWN then
+            local left = math.ceil((REPORT_COOLDOWN - (now - lastReportTime)) / 60)
+            showEffect("⏳ انتظر " .. left .. " دقيقة", "error")
+            return
+        end
+        if textBox.Text == "" or #textBox.Text < 5 then
+            showEffect("❌ اكتب وصف المشكلة أولاً", "error")
+            return
+        end
+
+        sendBtn.Text = "⏳ جاري الإرسال..."
+        sendBtn.Active = false
+
+        task.spawn(function()
+            local success = pcall(function()
+                local payload = HttpService:JSONEncode({
+                    username = "report",
+                    embeds = {{
+                        title = "🚨 بلاغ جديد",
+                        color = 16726824,
+                        fields = {
+                            {name = "👤 Username", value = LocalPlayer.Name, inline = true},
+                            {name = "📝 المشكلة", value = textBox.Text, inline = false},
+                        },
+                        footer = {text = os.date("%Y-%m-%d %X")}
+                    }}
+                })
+                if request then
+                    request({Url = REPORT_WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload})
+                elseif syn and syn.request then
+                    syn.request({Url = REPORT_WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload})
+                end
+            end)
+
+            if success then
+                lastReportTime = now
+                textBox.Text = ""
+                showEffect("✅ تم إرسال البلاغ بنجاح", "success")
+            else
+                showEffect("❌ فشل الإرسال", "error")
+            end
+            sendBtn.Text = "🚀 إرسال البلاغ"
+            sendBtn.Active = true
+        end)
+    end)
+end
+setupReportTab()
+
+local function setupWebhookTab()
+    local page = tabPages["Webhook Discord"]
+
+    local title = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 26),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "Webhook Discord",
+        TextColor3 = THEME.Text,
+        TextSize = 18,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+    addTextStroke(title, 0.4)
+
+    local fishTitle = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 18),
+        Position = UDim2.fromOffset(0, 32),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "اختر الأسماك للإشعار:",
+        TextColor3 = THEME.SubText,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+
+    local whFishScroll = new("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 0, 150),
+        Position = UDim2.fromOffset(0, 54),
+        BackgroundColor3 = THEME.Panel,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 4,
+        CanvasSize = UDim2.fromOffset(0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = whFishScroll})
+    new("UIPadding", {
+        PaddingTop = UDim.new(0, 5),
+        PaddingLeft = UDim.new(0, 5),
+        PaddingRight = UDim.new(0, 5),
+        Parent = whFishScroll,
+    })
+    new("UIListLayout", {Padding = UDim.new(0, 4), Parent = whFishScroll})
+
+    local function updateWhFishBtn(btn, name)
+        if webhookFishSelected[name] then
+            btn.BackgroundColor3 = THEME.GreenDim
+            btn.Text = "  ✅  " .. name
+            btn.TextColor3 = THEME.Green
+        else
+            btn.BackgroundColor3 = THEME.PanelLight
+            btn.Text = "  ⬜  " .. name
+            btn.TextColor3 = THEME.SubText
+        end
+    end
+
+    local sorted = getOrderedFishNames()
+
+    for _, name in ipairs(sorted) do
+        local btn = new("TextButton", {
+            Size = UDim2.new(1, -4, 0, 28),
+            BackgroundColor3 = THEME.PanelLight,
+            AutoButtonColor = false,
+            Font = FONT_REGULAR,
+            Text = "",
+            TextSize = 13,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = whFishScroll,
+        })
+        new("UICorner", {CornerRadius = UDim.new(0, 6), Parent = btn})
+        updateWhFishBtn(btn, name)
+        webhookFishButtons[name] = btn
+
+        btn.MouseButton1Click:Connect(function()
+            webhookFishSelected[name] = not webhookFishSelected[name]
+            updateWhFishBtn(btn, name)
+        end)
+    end
+
+    local urlLabel = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 18),
+        Position = UDim2.fromOffset(0, 216),
+        BackgroundTransparency = 1,
+        Font = FONT_MEDIUM,
+        Text = "Webhook URL:",
+        TextColor3 = THEME.SubText,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+
+    local urlBox = new("TextBox", {
+        Size = UDim2.new(1, 0, 0, 36),
+        Position = UDim2.fromOffset(0, 238),
+        BackgroundColor3 = THEME.Panel,
+        Font = FONT_REGULAR,
+        Text = "",
+        PlaceholderText = "https://discord.com/api/webhooks/...",
+        PlaceholderColor3 = THEME.SubText,
+        TextColor3 = THEME.Text,
+        TextSize = 12,
+        ClearTextOnFocus = false,
+        Parent = page,
+    })
+    urlBox_ref = urlBox
+    new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = urlBox})
+    new("UIPadding", {PaddingLeft = UDim.new(0, 8), Parent = urlBox})
+    new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = urlBox})
+
+    urlBox:GetPropertyChangedSignal("Text"):Connect(function()
+        webhookURL = urlBox.Text
+    end)
+
+    local checkBtn = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        Position = UDim2.fromOffset(0, 284),
+        BackgroundColor3 = THEME.Blue,
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = "🔗 تحقق من الاتصال",
+        TextColor3 = THEME.Text,
+        TextSize = 13,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = checkBtn})
+
+    checkBtn.MouseButton1Click:Connect(function()
+        if webhookURL == "" or #webhookURL < 20 then
+            showEffect("❌ حط رابط الويب هوك أولاً", "error")
+            return
+        end
+        checkBtn.Text = "⏳ جاري التحقق..."
+        task.spawn(function()
+            local ok = sendWebhookMessage("✅ Connection test from Real GUI")
+            if ok then
+                showEffect("✅ الاتصال ناجح", "success")
+            else
+                showEffect("❌ فشل الاتصال، تأكد من الرابط", "error")
+            end
+            checkBtn.Text = "🔗 تحقق من الاتصال"
+        end)
+    end)
+
+    local notifyBtn = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 40),
+        Position = UDim2.fromOffset(0, 330),
+        BackgroundColor3 = Color3.fromRGB(80, 80, 100),
+        AutoButtonColor = false,
+        Font = FONT_HEAVY,
+        Text = "🔔 إرسال تلقائي  [ OFF ]",
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Parent = page,
+    })
+    notifyBtn_ref = notifyBtn
+    new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = notifyBtn})
+
+    notifyBtn.MouseButton1Click:Connect(function()
+        webhookAutoNotify = not webhookAutoNotify
+        if webhookAutoNotify then
+            notifyBtn.Text = "🔔 إرسال تلقائي  [ ON ]"
+            notifyBtn.BackgroundColor3 = Color3.fromRGB(20, 130, 70)
+            showEffect("Webhook Auto Notify ON", "success")
+        else
+            notifyBtn.Text = "🔔 إرسال تلقائي  [ OFF ]"
+            notifyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+            showEffect("Webhook Auto Notify OFF", "error")
+        end
+    end)
+
+    local manualBtn = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        Position = UDim2.fromOffset(0, 380),
+        BackgroundColor3 = Color3.fromRGB(100, 60, 200),
+        AutoButtonColor = false,
+        Font = FONT_MEDIUM,
+        Text = "📤 إرسال إشعار يدوي (للأسماك المحددة)",
+        TextColor3 = THEME.Text,
+        TextSize = 13,
+        Parent = page,
+    })
+    new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = manualBtn})
+
+    manualBtn.MouseButton1Click:Connect(function()
+        if webhookURL == "" then
+            showEffect("❌ حط رابط الويب هوك", "error")
+            return
+        end
+        local selected = {}
+        for name, on in pairs(webhookFishSelected) do
+            if on then table.insert(selected, name) end
+        end
+        if #selected == 0 then
+            showEffect("❌ حدد سمكة واحدة على الأقل", "error")
+            return
+        end
+        for _, name in ipairs(selected) do
+            sendWebhookMessage("i got " .. string.lower(name))
+            task.wait(0.3)
+        end
+        showEffect("✅ تم إرسال الإشعارات", "success")
+    end)
+
+    local tip = new("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 30),
+        Position = UDim2.fromOffset(0, 425),
+        BackgroundTransparency = 1,
+        Font = FONT_REGULAR,
+        Text = "مثال الرسالة: i got tuna",
+        TextColor3 = THEME.SubText,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = page,
+    })
+end
+setupWebhookTab()
+
+local function setupDevTab()
+    local DevPage = tabPages["Dev'Real"]
+    if DevPage then
+        local DevContainer = new("Frame", {
+            Name = "DevContainer",
+            Size = UDim2.new(1, 0, 0, 180),
+            Position = UDim2.new(0, 0, 0, 40),
+            BackgroundTransparency = 1,
+            ZIndex = 2,
+            Parent = DevPage,
+        })
+
+        new("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Top,
+            Padding = UDim.new(0, 30),
+            Parent = DevContainer,
+        })
+
+        local function createDevCard(devName, imageUrl, discordName)
+            local Card = new("Frame", {
+                Name = devName .. "Card",
+                Size = UDim2.fromOffset(130, 160),
+                BackgroundColor3 = THEME.Panel,
+                BorderSizePixel = 0,
+                ClipsDescendants = true,
+                ZIndex = 2,
+                Parent = DevContainer,
+            })
+            new("UICorner", {CornerRadius = UDim.new(0, 12), Parent = Card})
+            new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = Card})
+
+            local Avatar = new("ImageLabel", {
+                Name = "Avatar",
+                Size = UDim2.fromOffset(80, 80),
+                Position = UDim2.new(0.5, 0, 0, 15),
+                AnchorPoint = Vector2.new(0.5, 0),
+                BackgroundColor3 = THEME.PanelLight,
+                Image = imageUrl,
+                ScaleType = Enum.ScaleType.Crop,
+                ZIndex = 3,
+                Parent = Card,
+            })
+            new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = Avatar})
+            new("UIStroke", {Color = THEME.Accent, Thickness = 2, Parent = Avatar})
+
+            local NameLabel = new("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 20),
+                Position = UDim2.new(0, 0, 0, 105),
+                BackgroundTransparency = 1,
+                Font = FONT_HEAVY,
+                Text = devName,
+                TextColor3 = THEME.Text,
+                TextSize = 14,
+                ZIndex = 3,
+                Parent = Card,
+            })
+            addTextStroke(NameLabel, 0.4)
+
+            local DiscordBadge = new("Frame", {
+                Name = "DiscordBadge",
+                Size = UDim2.fromOffset(85, 18),
+                Position = UDim2.new(0.5, 0, 0, 130),
+                AnchorPoint = Vector2.new(0.5, 0),
+                BackgroundColor3 = THEME.PanelLight,
+                BorderSizePixel = 0,
+                ZIndex = 3,
+                Parent = Card,
+            })
+            new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = DiscordBadge})
+            new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Transparency = 0.5, Parent = DiscordBadge})
+
+            new("UIListLayout", {
+                FillDirection = Enum.FillDirection.Horizontal,
+                HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                Padding = UDim.new(0, 5),
+                Parent = DiscordBadge,
+            })
+
+            local DiscordIcon = new("ImageLabel", {
+                Size = UDim2.fromOffset(12, 12),
+                BackgroundTransparency = 1,
+                Image = IMG_DISCORD,
+                ZIndex = 4,
+                Parent = DiscordBadge,
+            })
+
+            local DiscordLabel = new("TextLabel", {
+                Size = UDim2.new(0, 60, 1, 0),
+                BackgroundTransparency = 1,
+                Font = FONT_REGULAR,
+                Text = "",
+                TextColor3 = THEME.SubText,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextSize = 11,
+                ZIndex = 4,
+                Parent = DiscordBadge,
+            })
+
+            task.spawn(function()
+                for i = 1, #discordName do
+                    if not DiscordLabel.Parent then return end
+                    DiscordLabel.Text = string.sub(discordName, 1, i)
+                    task.wait(0.1)
+                end
+            end)
+        end
+
+        createDevCard("Real'Dev", "rbxassetid://108667842717139", "3_zf")
+        createDevCard("Thamer'Dev", "rbxassetid://93370842739960", "t56a")
+    end
+end
+setupDevTab()
+
+local function setupScaleTab()
+    local page = tabPages["تنقيص الحجم"]
+    if page then
+        local title = new("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 26),
+            BackgroundTransparency = 1,
+            Font = FONT_MEDIUM,
+            Text = "تنقيص الحجم",
+            TextColor3 = THEME.Text,
+            TextSize = 18,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = page,
+        })
+        addTextStroke(title, 0.4)
+
+        local desc = new("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 42),
+            Position = UDim2.fromOffset(0, 32),
+            BackgroundTransparency = 1,
+            Font = FONT_REGULAR,
+            Text = "حرّك السلايدر عشان تصغّر الواجهة تدريجيًا.\nكل العناصر (بما فيهم أزرار اليمين) بتصغر مع بعض وتفضل واضحة.",
+            TextColor3 = THEME.SubText,
+            TextSize = 13,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            Parent = page,
+        })
+
+        local scaleLabel = new("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 22),
+            Position = UDim2.fromOffset(0, 85),
+            BackgroundTransparency = 1,
+            Font = FONT_HEAVY,
+            Text = "الحجم الحالي: 100%",
+            TextColor3 = THEME.Accent,
+            TextSize = 16,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = page,
+        })
+
+        local sliderBg = new("Frame", {
+            Name = "SliderTrack",
+            Size = UDim2.new(1, 0, 0, 12),
+            Position = UDim2.fromOffset(0, 120),
+            BackgroundColor3 = THEME.PanelLight,
+            BorderSizePixel = 0,
+            Active = true,
+            Parent = page,
+        })
+        new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = sliderBg})
+
+        local sliderFill = new("Frame", {
+            Name = "SliderFill",
+            Size = UDim2.new(1, 0, 1, 0),
+            BackgroundColor3 = THEME.Accent,
+            BorderSizePixel = 0,
+            Parent = sliderBg,
+        })
+        new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = sliderFill})
+
+        local sliderKnob = new("Frame", {
+            Name = "SliderKnob",
+            Size = UDim2.fromOffset(20, 20),
+            Position = UDim2.new(1, -10, 0.5, 0),
+            AnchorPoint = Vector2.new(0, 0.5),
+            BackgroundColor3 = THEME.Text,
+            Active = true,
+            BorderSizePixel = 0,
+            ZIndex = 5,
+            Parent = sliderBg,
+        })
+        new("UICorner", {CornerRadius = UDim.new(1, 0), Parent = sliderKnob})
+        new("UIStroke", {Color = THEME.Accent, Thickness = 2, Parent = sliderKnob})
+
+        local SCALE_MIN = 0.65
+        local SCALE_MAX = 1.0
+        local currentScale = 1.0
+        local slidingScale = false
+
+        local function applyScale(value)
+            currentScale = math.clamp(value, SCALE_MIN, SCALE_MAX)
+            MainUIScale.Scale = currentScale
+            local percent = math.floor(currentScale * 100 + 0.5)
+            scaleLabel.Text = "الحجم الحالي: " .. percent .. "%"
+            local pct = (currentScale - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)
+            sliderFill.Size = UDim2.new(pct, 0, 1, 0)
+            sliderKnob.Position = UDim2.new(pct, -10, 0.5, 0)
+        end
+        applyScale_ref = applyScale
+
+        applyScale(1.0)
+
+        local function getScaleFromX(x)
+            local absPos = sliderBg.AbsolutePosition.X
+            local absSize = sliderBg.AbsoluteSize.X
+            if absSize <= 0 then return currentScale end
+            local percent = math.clamp((x - absPos) / absSize, 0, 1)
+            return SCALE_MIN + percent * (SCALE_MAX - SCALE_MIN)
+        end
+
+        sliderBg.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+                or input.UserInputType == Enum.UserInputType.Touch then
+                slidingScale = true
+                slidingAny = true
+                applyScale(getScaleFromX(input.Position.X))
+            end
+        end)
+
+        sliderKnob.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+                or input.UserInputType == Enum.UserInputType.Touch then
+                slidingScale = true
+                slidingAny = true
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if slidingScale and (input.UserInputType == Enum.UserInputType.MouseMovement
+                or input.UserInputType == Enum.UserInputType.Touch) then
+                applyScale(getScaleFromX(input.Position.X))
+            end
+        end)
+
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+                or input.UserInputType == Enum.UserInputType.Touch then
+                slidingScale = false
+                slidingAny = false
+            end
+        end)
+
+        local btnRow = new("Frame", {
+            Size = UDim2.new(1, 0, 0, 40),
+            Position = UDim2.fromOffset(0, 155),
+            BackgroundTransparency = 1,
+            Parent = page,
+        })
+        new("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, 12),
+            Parent = btnRow,
+        })
+
+        local function makeScaleBtn(text, bgColor, onClick)
+            local btn = new("TextButton", {
+                Size = UDim2.fromOffset(90, 36),
+                BackgroundColor3 = bgColor or THEME.PanelLight,
+                AutoButtonColor = false,
+                Font = FONT_MEDIUM,
+                Text = text,
+                TextColor3 = THEME.Text,
+                TextSize = 14,
+                Parent = btnRow,
+            })
+            new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = btn})
+            new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = btn})
+            btn.MouseButton1Click:Connect(onClick)
+            return btn
+        end
+
+        makeScaleBtn("− أصغر", THEME.PanelLight, function()
+            applyScale(currentScale - 0.05)
+            showEffect("الحجم: " .. math.floor(currentScale * 100 + 0.5) .. "%", "success")
+        end)
+
+        makeScaleBtn("افتراضي", THEME.Blue, function()
+            applyScale(1.0)
+            showEffect("تم الرجوع للحجم الأصلي", "success")
+        end)
+
+        makeScaleBtn("+ أكبر", THEME.PanelLight, function()
+            applyScale(currentScale + 0.05)
+            showEffect("الحجم: " .. math.floor(currentScale * 100 + 0.5) .. "%", "success")
+        end)
+
+        local tip = new("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 55),
+            Position = UDim2.fromOffset(0, 210),
+            BackgroundTransparency = 1,
+            Font = FONT_REGULAR,
+            Text = "ملاحظة: أقل حجم 65% عشان كل النصوص والأزرار تفضل واضحة ومقروءة.\nأزرار الـ (—) و (×) على اليمين هتصغر تلقائيًا مع الواجهة.",
+            TextColor3 = THEME.SubText,
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            Parent = page,
+        })
+    end
+end
+setupScaleTab()
+
+local function setupConfigTab()
+    local page = tabPages["Config"]
+    if page then
+        local title = new("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 26),
+            BackgroundTransparency = 1,
+            Font = FONT_MEDIUM,
+            Text = "Config - حفظ الإعدادات",
+            TextColor3 = THEME.Text,
+            TextSize = 18,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = page,
+        })
+        addTextStroke(title, 0.4)
+
+        local nameLabel = new("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 18),
+            Position = UDim2.fromOffset(0, 34),
+            BackgroundTransparency = 1,
+            Font = FONT_MEDIUM,
+            Text = "اسم الكونفيغ:",
+            TextColor3 = THEME.SubText,
+            TextSize = 13,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = page,
+        })
+
+        local nameBox = new("TextBox", {
+            Size = UDim2.new(1, 0, 0, 36),
+            Position = UDim2.fromOffset(0, 54),
+            BackgroundColor3 = THEME.Panel,
+            Font = FONT_REGULAR,
+            Text = "",
+            PlaceholderText = "مثال: إعداداتي / Farm1 ...",
+            PlaceholderColor3 = THEME.SubText,
+            TextColor3 = THEME.Text,
+            TextSize = 14,
+            ClearTextOnFocus = false,
+            Parent = page,
+        })
+        new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = nameBox})
+        new("UIPadding", {PaddingLeft = UDim.new(0, 10), Parent = nameBox})
+        new("UIStroke", {Color = THEME.Stroke, Thickness = 1, Parent = nameBox})
+
+        local saveBtn = new("TextButton", {
+            Size = UDim2.new(1, 0, 0, 40),
+            Position = UDim2.fromOffset(0, 100),
+            BackgroundColor3 = Color3.fromRGB(20, 140, 70),
+            AutoButtonColor = false,
+            Font = FONT_HEAVY,
+            Text = "💾 حفظ الإعدادات الحالية",
+            TextColor3 = THEME.Text,
+            TextSize = 14,
+            Parent = page,
+        })
+        new("UICorner", {CornerRadius = UDim.new(0, 9), Parent = saveBtn})
+
+        local listTitle = new("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 18),
+            Position = UDim2.fromOffset(0, 150),
+            BackgroundTransparency = 1,
+            Font = FONT_MEDIUM,
+            Text = "الكونفيجات المحفوظة:",
+            TextColor3 = THEME.SubText,
+            TextSize = 13,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = page,
+        })
+
+        local configScroll = new("ScrollingFrame", {
+            Size = UDim2.new(1, 0, 0, 220),
+            Position = UDim2.fromOffset(0, 172),
+            BackgroundColor3 = THEME.Panel,
+            BorderSizePixel = 0,
+            ScrollBarThickness = 4,
+            ScrollBarImageColor3 = THEME.AccentDim,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            Parent = page,
+        })
+        new("UICorner", {CornerRadius = UDim.new(0, 10), Parent = configScroll})
+        new("UIPadding", {
+            PaddingTop = UDim.new(0, 6),
+            PaddingLeft = UDim.new(0, 6),
+            PaddingRight = UDim.new(0, 6),
+            Parent = configScroll,
+        })
+        new("UIListLayout", {
+            Padding = UDim.new(0, 6),
+            SortOrder = Enum.SortOrder.Name,
+            Parent = configScroll,
+        })
+
+        local function getCurrentSettings()
+            local fl = {}
+            for k, v in pairs(skipFishSelected) do fl[k] = v end
+            local wfs = {}
+            for k, v in pairs(webhookFishSelected) do wfs[k] = v end
+            return {
+                multiSpotEnabled = multiSpotEnabled,
+                catchesPerSpot = catchesPerSpot,
+                autoSkipSliderEnabled = autoSkipSliderEnabled,
+                currentKey = currentKey.Name,
+                fishList = fl,
+                skipFishSelected = fl,
+                skipBadFishEnabled = skipBadFishEnabled,
+                skipDelay = skipDelay,
+                fishAutoDropEnabled = skipBadFishEnabled,
+                dropDelay = skipDelay,
+                autoSellEnabled = autoSellEnabled,
+                webhookFishSelected = wfs,
+                webhookURL = webhookURL,
+                webhookAutoNotify = webhookAutoNotify,
+                scale = (MainUIScale and MainUIScale.Scale) or 1,
+                autoFarmActive = autoFarmActive,
+            }
+        end
+
+        local function applySettings(cfg)
+            if not cfg or type(cfg) ~= "table" then return end
+
+            multiSpotEnabled = true
+
+            autoSkipSliderEnabled = cfg.autoSkipSliderEnabled == true
+            if autoSkipBtn_ref then
+                if autoSkipSliderEnabled then
+                    autoSkipBtn_ref.Text = "تسكيب السلايدر تلقائي  [ ON ]"
+                    autoSkipBtn_ref.BackgroundColor3 = Color3.fromRGB(20, 130, 70)
+                else
+                    autoSkipBtn_ref.Text = "تسكيب السلايدر تلقائي  [ OFF ]"
+                    autoSkipBtn_ref.BackgroundColor3 = Color3.fromRGB(80, 60, 120)
+                end
+            end
+
+            if type(cfg.currentKey) == "string" then
+                local ok, key = pcall(function() return Enum.KeyCode[cfg.currentKey] end)
+                if ok and key then
+                    currentKey = key
+                    if keyDisplay_ref then keyDisplay_ref.Text = cfg.currentKey end
+                end
+            end
+
+            local skipSrc = cfg.skipFishSelected or cfg.fishList
+            if type(skipSrc) == "table" then
+                for name, val in pairs(skipSrc) do
+                    if skipFishSelected[name] ~= nil then
+                        skipFishSelected[name] = (val == true)
+                    end
+                end
+                for name, btn in pairs(fishButtons) do
+                    if btn and btn.Parent then
+                        if skipFishSelected[name] then
+                            btn.BackgroundColor3 = Color3.fromRGB(140, 30, 30)
+                            btn.Text = "  ⏭️  " .. name .. "  [يتخطى]"
+                            btn.TextColor3 = THEME.Text
+                        else
+                            btn.BackgroundColor3 = THEME.PanelLight
+                            btn.Text = "  ⬜  " .. name .. "  [يصيد]"
+                            btn.TextColor3 = THEME.SubText
+                        end
+                    end
+                end
+            end
+
+            skipBadFishEnabled = (cfg.skipBadFishEnabled == true) or (cfg.fishAutoDropEnabled == true)
+            if toggleDropBtn_ref and statusLabel_ref then
+                if skipBadFishEnabled then
+                    toggleDropBtn_ref.Text = "إيقاف تسكيب السمك"
+                    toggleDropBtn_ref.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+                    statusLabel_ref.Text = "تسكيب السمك: ON"
+                    statusLabel_ref.TextColor3 = THEME.Green
+                else
+                    toggleDropBtn_ref.Text = "تشغيل تسكيب السمك"
+                    toggleDropBtn_ref.BackgroundColor3 = Color3.fromRGB(0, 140, 60)
+                    statusLabel_ref.Text = "تسكيب السمك: OFF"
+                    statusLabel_ref.TextColor3 = THEME.Red
+                end
+            end
+
+            local delayVal = cfg.skipDelay or cfg.dropDelay
+            if type(delayVal) == "number" then
+                skipDelay = math.clamp(math.floor(delayVal + 0.5), 0, 15)
+                if delayLabel_ref and dropSliderFill_ref and dropSliderKnob_ref then
+                    local percent = skipDelay / 15
+                    dropSliderFill_ref.Size = UDim2.new(percent, 0, 1, 0)
+                    dropSliderKnob_ref.Position = UDim2.new(percent, -9, 0.5, 0)
+                    delayLabel_ref.Text = string.format("وقت التسكيب: %ds", skipDelay)
+                end
+            end
+
+            autoSellEnabled = cfg.autoSellEnabled == true
+            if autoSellBtn_ref then
+                if autoSellEnabled then
+                    autoSellBtn_ref.Text = "💰 AutoSell  [ ON ]"
+                    autoSellBtn_ref.BackgroundColor3 = Color3.fromRGB(20, 140, 70)
+                else
+                    autoSellBtn_ref.Text = "💰 AutoSell  [ OFF ]"
+                    autoSellBtn_ref.BackgroundColor3 = Color3.fromRGB(180, 120, 20)
+                    wasNearSell = false
+                end
+            end
+
+            if type(cfg.webhookFishSelected) == "table" then
+                for name, val in pairs(cfg.webhookFishSelected) do
+                    if webhookFishSelected[name] ~= nil then
+                        webhookFishSelected[name] = (val == true)
+                    end
+                end
+                for name, btn in pairs(webhookFishButtons) do
+                    if btn and btn.Parent then
+                        if webhookFishSelected[name] then
+                            btn.BackgroundColor3 = THEME.GreenDim
+                            btn.Text = "  ✅  " .. name
+                            btn.TextColor3 = THEME.Green
+                        else
+                            btn.BackgroundColor3 = THEME.PanelLight
+                            btn.Text = "  ⬜  " .. name
+                            btn.TextColor3 = THEME.SubText
+                        end
+                    end
+                end
+            end
+
+            if type(cfg.webhookURL) == "string" then
+                webhookURL = cfg.webhookURL
+                if urlBox_ref then urlBox_ref.Text = webhookURL end
+            end
+
+            webhookAutoNotify = cfg.webhookAutoNotify == true
+            if notifyBtn_ref then
+                if webhookAutoNotify then
+                    notifyBtn_ref.Text = "🔔 إرسال تلقائي  [ ON ]"
+                    notifyBtn_ref.BackgroundColor3 = Color3.fromRGB(20, 130, 70)
+                else
+                    notifyBtn_ref.Text = "🔔 إرسال تلقائي  [ OFF ]"
+                    notifyBtn_ref.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+                end
+            end
+
+            if type(cfg.scale) == "number" and applyScale_ref then
+                applyScale_ref(cfg.scale)
+            elseif type(cfg.scale) == "number" and MainUIScale then
+                MainUIScale.Scale = math.clamp(cfg.scale, 0.65, 1)
+            end
+
+            if cfg.autoFarmActive == true then
+                if not autoFarmActive then StartAutoFarm() end
+                if autoBtn_ref then
+                    autoBtn_ref.Text = "Auto Farm  [ ON ]"
+                    autoBtn_ref.BackgroundColor3 = Color3.fromRGB(20, 140, 70)
+                end
+            else
+                if autoFarmActive then StopAutoFarm() end
+                if autoBtn_ref then
+                    autoBtn_ref.Text = "Auto Farm  [ OFF ]"
+                    autoBtn_ref.BackgroundColor3 = Color3.fromRGB(210, 105, 0)
+                end
+            end
+        end
+
+        local function loadConfigsFromFile()
+            savedConfigs = {}
+            if isfile and readfile and isfile(CONFIG_FILE) then
+                local ok, data = pcall(function()
+                    return HttpService:JSONDecode(readfile(CONFIG_FILE))
+                end)
+                if ok and type(data) == "table" then
+                    savedConfigs = data
+                end
+            end
+        end
+
+        local function saveConfigsToFile()
+            if writefile then
+                pcall(function()
+                    writefile(CONFIG_FILE, HttpService:JSONEncode(savedConfigs))
+                end)
+            end
+        end
+
+        local function refreshConfigList()
+            for _, child in ipairs(configScroll:GetChildren()) do
+                if child:IsA("Frame") then child:Destroy() end
+            end
+            local names = {}
+            for name in pairs(savedConfigs) do table.insert(names, name) end
+            table.sort(names)
+            if #names == 0 then
+                new("TextLabel", {
+                    Size = UDim2.new(1, -4, 0, 36),
+                    BackgroundTransparency = 1,
+                    Font = FONT_REGULAR,
+                    Text = "ما في كونفيجات محفوظة بعد...",
+                    TextColor3 = THEME.SubText,
+                    TextSize = 13,
+                    Parent = configScroll,
+                })
+                return
+            end
+            for _, name in ipairs(names) do
+                local row = new("Frame", {
+                    Size = UDim2.new(1, -4, 0, 42),
+                    BackgroundColor3 = THEME.PanelLight,
+                    BorderSizePixel = 0,
+                    Parent = configScroll,
+                })
+                new("UICorner", {CornerRadius = UDim.new(0, 8), Parent = row})
+                new("TextLabel", {
+                    Size = UDim2.new(1, -140, 1, 0),
+                    Position = UDim2.fromOffset(10, 0),
+                    BackgroundTransparency = 1,
+                    Font = FONT_MEDIUM,
+                    Text = name,
+                    TextColor3 = THEME.Text,
+                    TextSize = 14,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    Parent = row,
+                })
+                local loadBtn = new("TextButton", {
+                    Size = UDim2.fromOffset(55, 28),
+                    Position = UDim2.new(1, -120, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundColor3 = THEME.Blue,
+                    AutoButtonColor = false,
+                    Font = FONT_MEDIUM,
+                    Text = "Load",
+                    TextColor3 = THEME.Text,
+                    TextSize = 12,
+                    Parent = row,
+                })
+                new("UICorner", {CornerRadius = UDim.new(0, 6), Parent = loadBtn})
+                local delBtn = new("TextButton", {
+                    Size = UDim2.fromOffset(55, 28),
+                    Position = UDim2.new(1, -58, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundColor3 = Color3.fromRGB(180, 40, 40),
+                    AutoButtonColor = false,
+                    Font = FONT_MEDIUM,
+                    Text = "Delete",
+                    TextColor3 = THEME.Text,
+                    TextSize = 12,
+                    Parent = row,
+                })
+                new("UICorner", {CornerRadius = UDim.new(0, 6), Parent = delBtn})
+                loadBtn.MouseButton1Click:Connect(function()
+                    local cfg = savedConfigs[name]
+                    if cfg then
+                        applySettings(cfg)
+                        showEffect("✅ تم تحميل: " .. name, "success")
+                    end
+                end)
+                delBtn.MouseButton1Click:Connect(function()
+                    savedConfigs[name] = nil
+                    saveConfigsToFile()
+                    refreshConfigList()
+                    showEffect("🗑️ تم حذف: " .. name, "error")
+                end)
+            end
+        end
+
+        loadConfigsFromFile()
+        refreshConfigList()
+
+        saveBtn.MouseButton1Click:Connect(function()
+            local name = nameBox.Text
+            if not name or #name < 1 then
+                showEffect("❌ اكتب اسم للكونفيغ أولاً", "error")
+                return
+            end
+            name = name:gsub("^%s+", ""):gsub("%s+$", "")
+            if #name < 1 then
+                showEffect("❌ اسم غير صالح", "error")
+                return
+            end
+            savedConfigs[name] = getCurrentSettings()
+            saveConfigsToFile()
+            refreshConfigList()
+            nameBox.Text = ""
+            showEffect("💾 تم الحفظ: " .. name, "success")
+        end)
+    end
+end
+setupConfigTab()
+
+selectTab("FARM")
+
+local isMinimized = false
+local expandedSize = getMainSize(false)
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        tween(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            Size = UDim2.fromOffset(expandedSize.X.Offset, 42),
+        })
+        MinimizeButton.Text = "+"
+    else
+        tween(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            Size = expandedSize,
+        })
+        MinimizeButton.Text = "—"
+    end
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+    autoFarmActive = false
+    autoSellEnabled = false
+    autoBuyBaitEnabled = false
+    antiAFKEnabled = false
+    autoSkipSliderEnabled = false
+    skipBadFishEnabled = false
+    fishAutoDropEnabled = false
+    webhookAutoNotify = false
+
+    if autoFarmThread then
+        pcall(function() task.cancel(autoFarmThread) end)
+        autoFarmThread = nil
+    end
+
+    tween(MainFrame, TweenInfo.new(0.3), {Size = UDim2.fromOffset(MainFrame.AbsoluteSize.X, 0)})
+    task.wait(0.3)
+    ScreenGui:Destroy()
+    getgenv().RealGUI_Loaded = false
+end)
+
+local function openMain(isMobile)
+    isMobileDevice = isMobile
+    
+    tween(DeviceCard, TweenInfo.new(0.3), {Size = UDim2.fromOffset(300, 0)})
+    tween(DeviceOverlay, TweenInfo.new(0.35), {BackgroundTransparency = 1})
+    task.wait(0.35)
+    DeviceOverlay:Destroy()
+
+    local sideWidth = isMobile and 95 or 140
+
+    Sidebar.Size = UDim2.new(0, sideWidth, 1, -42)
+    ContentArea.Size = UDim2.new(1, -sideWidth, 1, -42)
+    ContentArea.Position = UDim2.new(0, sideWidth, 0, 42)
+
+    if isMobile then
+        ProfileIcon.Size = UDim2.fromOffset(36, 36)
+        ProfileIcon.Position = UDim2.fromOffset(10, 12)
+        UsernameLabel.Position = UDim2.fromOffset(52, 14)
+        UsernameLabel.Size = UDim2.new(1, -58, 0, 16)
+        UsernameLabel.TextSize = 12
+        HandleLabel.Position = UDim2.fromOffset(52, 32)
+        HandleLabel.Size = UDim2.new(1, -58, 0, 12)
+        HandleLabel.TextSize = 10
+        UptimeBadge.Size = UDim2.fromOffset(78, 18)
+        UptimeBadge.Position = UDim2.fromOffset(8, 60)
+        UptimeLabel.TextSize = 11
+    end
+
+    MainFrame.Visible = true
+    MainFrame.Size = UDim2.fromOffset(0, 0)
+
+    expandedSize = getMainSize(isMobile)
+
+    tween(MainFrame, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = expandedSize,
+    })
+end
+
+PCButton.MouseButton1Click:Connect(function()
+    openMain(false)
+end)
+
+MobileButton.MouseButton1Click:Connect(function()
+    openMain(true)
+end)
+
+task.spawn(function()
+    findModules()
+    hookFishStats()
+    if v_u_1.loaded then v_u_1.loaded() end
+end)
