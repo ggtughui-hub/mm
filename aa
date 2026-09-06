@@ -1,1 +1,3543 @@
+local ScriptCode = [========[
+if getgenv().FishFarmLoaded then return end
+getgenv().FishFarmLoaded = true
 
+-- ============================================================
+-- Real Auto Farm Fishing - Complete Integrated Version
+-- Vehicle + Fish while seated + Smart Protection + Smart Sell
+-- ============================================================
+
+-- تخطي البداية (Play + Avatar Skip) مثل نظام NEE
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local CoreGui = game:GetService("CoreGui")
+    local player = Players.LocalPlayer
+
+    local function isActuallyVisible(obj)
+        if not obj or obj.Parent == nil then return false end
+        if obj:IsA("GuiObject") and not obj.Visible then return false end
+        local current = obj.Parent
+        while current and current ~= game do
+            if current:IsA("GuiObject") and not current.Visible then return false end
+            if current:IsA("ScreenGui") and current.Enabled == false then return false end
+            current = current.Parent
+        end
+        return true
+    end
+
+    local function fireButton(btn)
+        if not btn or not btn.Parent or not isActuallyVisible(btn) then return end
+        pcall(function()
+            if firesignal then
+                firesignal(btn.MouseButton1Click)
+                firesignal(btn.Activated)
+            end
+            if getconnections then
+                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do conn:Fire() end
+                for _, conn in ipairs(getconnections(btn.Activated)) do conn:Fire() end
+            end
+        end)
+    end
+
+    while true do
+        pcall(function()
+            local holders = { player:FindFirstChild("PlayerGui"), CoreGui }
+            for _, holder in ipairs(holders) do
+                if holder then
+                    for _, obj in ipairs(holder:GetDescendants()) do
+                        if (obj:IsA("TextButton") or obj:IsA("ImageButton")) and isActuallyVisible(obj) then
+                            local nameUp = string.upper(obj.Name)
+                            if nameUp == "PLAYBUTTON" or nameUp == "AVATARMENUSKIPBUTTON" then
+                                fireButton(obj)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(0.5)
+    end
+end)
+
+pcall(function()
+    local RS0 = game:GetService("ReplicatedStorage")
+    local TransitionModule = require(RS0.Modules.Game.UI.TransitionUI)
+    TransitionModule.transition = function() end
+end)
+
+pcall(function()
+    local RS0 = game:GetService("ReplicatedStorage")
+    local CharCreator = require(RS0.Modules.Game.CharacterCreator.CharacterCreator)
+    if CharCreator.start then
+        CharCreator.start = function()
+            while true do task.wait(1) end
+        end
+    end
+end)
+
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+local Window = WindUI:CreateWindow({
+    Title = "NEE Hub",
+    Icon = "rbxassetid://70806103232052",
+    Author = "NEE | discord.gg/nee",
+    Folder = "NEEHub_Fish",
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 200,
+    HidePanelBackground = true,
+    Background = "rbxassetid://128083015590442",
+    BackgroundImage = "rbxassetid://128083015590442",
+    BackgroundImageTransparency = 0.32,
+    HideSearchBar = true,
+    ScrollBarEnabled = false,
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Name = game.Players.LocalPlayer.Name,
+        Image = "rbxassetid://70806103232052",
+        Callback = function() end,
+    },
+})
+
+pcall(function() Window:SetPanelBackground(false) end)
+pcall(function() Window:ToggleTransparency(true) end)
+pcall(function() Window:SetBackgroundImage("rbxassetid://128083015590442") end)
+pcall(function() Window:SetBackgroundImageTransparency(0.32) end)
+Window:EditOpenButton({ Enabled = false })
+
+-- خلّي خلفيات القوائم شفافة عشان الصورة تبين خلف الخيارات والنص يبقى واضح
+task.spawn(function()
+    task.wait(0.8)
+    pcall(function()
+        for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+            if gui:IsA("Frame") or gui:IsA("ScrollingFrame") then
+                if gui.BackgroundTransparency <= 0.15 and gui.BackgroundColor3.R < 0.25 then
+                    gui.BackgroundTransparency = 0.35
+                end
+            end
+        end
+    end)
+end)
+
+-- زر عائم
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "WindUI_Toggle"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
+
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.Size = UDim2.fromOffset(45, 45)
+ToggleBtn.Position = UDim2.new(0.5, -20, 0, 10)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+ToggleBtn.BackgroundTransparency = 0
+ToggleBtn.Image = "rbxassetid://70806103232052"
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
+ToggleBtn.AutoButtonColor = false
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(1, 0)
+Corner.Parent = ToggleBtn
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    ToggleBtn:TweenSize(UDim2.fromOffset(50, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.15, true, function()
+        ToggleBtn:TweenSize(UDim2.fromOffset(45, 45), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.15, true)
+    end)
+    Window:Toggle()
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp and input.KeyCode == Enum.KeyCode.LeftControl then
+        Window:Toggle()
+    end
+end)
+
+if getgenv then getgenv().identifyexecutor = nil end
+if getfenv then local env = getfenv(); env.identifyexecutor = nil end
+
+-- ============================================================
+-- Tabs
+-- ============================================================
+local FishTab = Window:Tab({ Title = 'FishFarm', Icon = 'fish' })
+local FishManagerTab = Window:Tab({ Title = 'تسكيب السمك', Icon = 'skip-forward' })
+local AntiKickTab = Window:Tab({ Title = 'Anti-Kick', Icon = 'shield' })
+local ServerTab = Window:Tab({ Title = 'Server', Icon = 'server' })
+local DevTab = Window:Tab({ Title = 'Dev', Icon = 'code' })
+
+-- ============================================================
+-- Config
+-- ============================================================
+local Config = { 
+    StopWalking = false, 
+    Running = false, 
+    Respawn = true, 
+    AutoBuyEnabled = true,
+    RodSelect = "Smart Select",
+    BaitSelect = "Smart Select",
+    BaitAmount = 10,
+    WalkSpeed = 20,
+    ZoneSelect = "Level 70 +",
+    AutoFarmActive = false,
+    UseVehicle = true,
+    VehicleType = "Bike",
+    VehicleSpeed = 55,
+    AutoRepairVehicle = true,
+    -- زراعة تلقائية مع الصيد
+    AutoFarmPots = true, -- مفعّل تلقائي مع Auto Farm
+    PotsVehicleSpeed = 55,
+    LastPotsCheck = 0,
+    PotsCheckInterval = 45, -- كل 45 ثانية يفحص الأسطل أثناء الصيد
+}
+
+local AntiKickEnabled = true
+local ServerSwitchEnabled = false
+local ServerSwitchInterval = 30
+local LastServerSwitchTime = tick()
+local LastActivityTime = tick()
+local LastCheckedPosition = Vector3.new(0, 0, 0)
+local IdleThreshold = 600
+local LastVehicleTeleport = 0
+local isProtectionTriggered = false
+local lastKnownCFrame = nil
+local lastKnownVehicleCFrame = nil
+local lastProtectionTime = 0
+local ProtectionCooldown = 20 -- ثواني بين كل تفعيل حماية
+local UNDERGROUND_Y = 233.138 -- ارتفاع التنقل تحت الأرض
+local INTERACT_DROP = 8 -- يطلع قريب من البيع/الشراء/الصراف بدون ما يطلع فوق الأرض كامل
+local PotsHiddenPlatform = nil
+local PotsSetupDone = false
+local isDoingPots = false
+
+local function UpdateActivity()
+    LastActivityTime = tick()
+    local char = game.Players.LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        LastCheckedPosition = char.HumanoidRootPart.Position
+    end
+end
+
+-- ============================================================
+-- UI Elements
+-- ============================================================
+FishTab:Section({ Title = "إعدادات المعدات" })
+
+FishTab:Toggle({
+    Title = "Auto Buy",
+    Icon = "check",
+    Type = "Checkbox",
+    Value = true,
+    Callback = function(Value)
+        Config.AutoBuyEnabled = Value
+    end
+})
+
+FishTab:Dropdown({
+    Title = "نوع السنارة",
+    Values = {"Smart Select", "FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"},
+    Value = "Smart Select",
+    Callback = function(Value)
+        Config.RodSelect = Value
+    end
+})
+
+FishTab:Dropdown({
+    Title = "نوع الطعم",
+    Values = {"Smart Select", "PrawntecUltimate", "PrawntecPro", "WormtecUltimate", "WormtecPro", "WormtecRegular"},
+    Value = "Smart Select",
+    Callback = function(Value)
+        Config.BaitSelect = Value
+    end
+})
+
+FishTab:Slider({
+    Title = "الحد الأقصى للطعم",
+    Step = 1,
+    Value = { Min = 1, Max = 100, Default = 10 },
+    Callback = function(Value)
+        Config.BaitAmount = Value
+    end
+})
+
+FishTab:Section({ Title = "اعدادات المركبه" })
+
+FishTab:Toggle({
+    Title = "استخدام المركبة",
+    Icon = "car",
+    Type = "Checkbox",
+    Value = true,
+    Callback = function(Value)
+        Config.UseVehicle = Value
+    end
+})
+
+FishTab:Dropdown({
+    Title = "نوع المركبة",
+    Values = {"Bike", "Car"},
+    Value = "Bike",
+    Callback = function(Value)
+        Config.VehicleType = Value
+    end
+})
+
+FishTab:Slider({
+    Title = "سرعة المركبة",
+    Step = 1,
+    Value = { Min = 20, Max = 120, Default = 55 },
+    Callback = function(Value)
+        Config.VehicleSpeed = Value
+    end
+})
+
+FishTab:Toggle({
+    Title = "إصلاح المركبة تلقائي",
+    Icon = "wrench",
+    Type = "Checkbox",
+    Value = true,
+    Callback = function(Value)
+        Config.AutoRepairVehicle = Value
+    end
+})
+
+
+FishTab:Section({ Title = "منطقة الصيد" })
+
+FishTab:Dropdown({
+    Title = "المستوى",
+    Values = {"Level 40 +", "Level 70 +"},
+    Value = "Level 70 +",
+    Callback = function(Value)
+        Config.ZoneSelect = Value
+    end
+})
+
+FishTab:Section({ Title = "التحكم" })
+
+FishTab:Toggle({
+    Title = "تشغيل Auto Farm",
+    Icon = "check",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(Value)
+        Config.AutoFarmActive = Value
+        if Value then
+            Config.StopWalking = false
+            UpdateActivity()
+            task.spawn(StartAutoFarm)
+        else
+            Config.StopWalking = true
+            Config.Running = false
+            isDoingPots = false
+            local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.Anchored = false end
+            -- ارفع للسطح وأزل المنصة الوهمية عند الإيقاف
+            task.spawn(function()
+                pcall(function()
+                    Sf:DestroyHiddenPlatform()
+                    local surfaceY = 252
+                    local vehicle = Sf:GetOwnedVehicle()
+                    if vehicle and vehicle.PrimaryPart then
+                        if Humanoid and not Humanoid.Sit then
+                            Sf:EnterVehicle(vehicle)
+                            task.wait(0.2)
+                        end
+                        Sf:SmoothVerticalMove(surfaceY, 1.2, true)
+                    elseif RootPart then
+                        Sf:SmoothVerticalMove(surfaceY, 1.2, true)
+                    end
+                end)
+            end)
+        end
+    end
+})
+
+FishTab:Toggle({
+    Title = "Auto Respawn",
+    Icon = "check",
+    Type = "Checkbox",
+    Value = true,
+    Callback = function(Value)
+        Config.Respawn = Value
+    end
+})
+
+-- تسكيب السمك (بدل رمي الإنفنتوري)
+local FISH_ORDER = {"Bass", "Perch", "Salmon", "Northern Pike", "Dolphinfish", "Coelacanth", "Tuna", "Sailfish", "Marlin"}
+local fishList = {}
+local skipFishSelected = {}
+for _, name in ipairs(FISH_ORDER) do
+    fishList[name] = true
+    skipFishSelected[name] = false
+end
+local skipBadFishEnabled = false
+local skipDelay = 0
+local isSkippingFish = false
+
+FishManagerTab:Section({ Title = "تسكيب السمك على الخط" })
+
+FishManagerTab:Toggle({
+    Title = "تفعيل تسكيب السمك",
+    Icon = "skip-forward",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(Value)
+        skipBadFishEnabled = Value
+    end
+})
+
+FishManagerTab:Slider({
+    Title = "تأخير التسكيب (ثواني)",
+    Step = 1,
+    Value = { Min = 0, Max = 15, Default = 0 },
+    Callback = function(Value)
+        skipDelay = Value
+    end
+})
+
+FishManagerTab:Section({ Title = "اختر الأسماك التي تريد تخطيها" })
+
+for _, fishName in ipairs(FISH_ORDER) do
+    FishManagerTab:Toggle({
+        Title = fishName,
+        Icon = "fish",
+        Type = "Checkbox",
+        Value = false,
+        Callback = function(Value)
+            skipFishSelected[fishName] = Value
+        end
+    })
+end
+
+FishManagerTab:Section({ Title = "تحكم سريع" })
+
+FishManagerTab:Button({
+    Title = "✅ تحديد الكل للتسكيب",
+    Icon = "check-square",
+    Callback = function()
+        for _, name in ipairs(FISH_ORDER) do
+            skipFishSelected[name] = true
+        end
+    end
+})
+
+FishManagerTab:Button({
+    Title = "❌ إلغاء تحديد الكل",
+    Icon = "x-square",
+    Callback = function()
+        for _, name in ipairs(FISH_ORDER) do
+            skipFishSelected[name] = false
+        end
+    end
+})
+
+local antiIdleRunning = false
+local function DoIdleTouch()
+    -- لمسة خمول للجوال والكمبيوتر بدون تحريك المركبة
+    pcall(function()
+        local vim = game:GetService("VirtualInputManager")
+        local cam = workspace.CurrentCamera
+        local pos = cam and cam.ViewportSize or Vector2.new(400, 400)
+        local x, y = pos.X * 0.5, pos.Y * 0.5
+        vim:SendMouseButtonEvent(x, y, 0, true, game, 1)
+        task.wait(0.04)
+        vim:SendMouseButtonEvent(x, y, 0, false, game, 1)
+        vim:SendMouseButtonEvent(x + 2, y + 2, 0, true, game, 1)
+        task.wait(0.04)
+        vim:SendMouseButtonEvent(x + 2, y + 2, 0, false, game, 1)
+    end)
+    pcall(function()
+        local vu = game:GetService("VirtualUser")
+        vu:CaptureController()
+        vu:ClickButton1(Vector2.new(200, 200))
+    end)
+    pcall(function()
+        local cam = workspace.CurrentCamera
+        if cam then
+            cam.CFrame = cam.CFrame * CFrame.Angles(0, math.rad(0.4), 0)
+        end
+    end)
+end
+
+local function EnableAntiKick(v)
+    AntiKickEnabled = v and true or false
+    if AntiKickEnabled and not antiIdleRunning then
+        antiIdleRunning = true
+        task.spawn(function()
+            while AntiKickEnabled do
+                task.wait(900)
+                if AntiKickEnabled then
+                    DoIdleTouch()
+                end
+            end
+            antiIdleRunning = false
+        end)
+    end
+end
+
+AntiKickTab:Section({ Title = "Anti-Afk" })
+AntiKickTab:Toggle({
+    Title = "يمنع الطرد",
+    Icon = "shield",
+    Type = "Checkbox",
+    Value = true,
+    Callback = function(Value)
+        EnableAntiKick(Value)
+    end
+})
+
+ServerTab:Section({ Title = "تغيير السيرفر التلقائي" })
+ServerTab:Toggle({
+    Title = "تفعيل تغيير السيرفر التلقائي",
+    Desc = "يغير السيرفر تلقائياً للسيرفر الأقل لاعبين",
+    Icon = "check",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(Value)
+        ServerSwitchEnabled = Value
+        if Value then
+            LastServerSwitchTime = tick()
+        end
+    end
+})
+
+ServerTab:Slider({
+    Title = "الفترة بين التغيير (دقائق)",
+    Step = 1,
+    Value = { Min = 5, Max = 120, Default = 30 },
+    Callback = function(Value)
+        ServerSwitchInterval = Value
+    end
+})
+
+ServerTab:Button({
+    Title = "Hop Server (Low Player) - الآن",
+    Icon = "shuffle",
+    Callback = function()
+        task.spawn(SwitchToSmallestServer)
+    end
+})
+
+ServerTab:Button({
+    Title = "Rejoin نفس السيرفر",
+    Icon = "refresh-ccw",
+    Callback = function()
+        local TeleportService = game:GetService("TeleportService")
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, game.Players.LocalPlayer)
+    end
+})
+
+ServerTab:Section({ Title = "إدارة الإعدادات" })
+ServerTab:Button({
+    Title = "💾 حفظ الإعدادات",
+    Icon = "save",
+    Callback = function()
+        SaveConfig()
+    end
+})
+ServerTab:Button({
+    Title = "📂 تحميل الإعدادات",
+    Icon = "folder",
+    Callback = function()
+        LoadConfig()
+    end
+})
+ServerTab:Button({
+    Title = "🗑️ حذف الإعدادات",
+    Icon = "trash",
+    Callback = function()
+        DeleteConfig()
+    end
+})
+
+DevTab:Button({
+    Title = "Discord",
+    Icon = "link",
+    Callback = function()
+        setclipboard("https://discord.gg/nee")
+    end
+})
+
+-- ============================================================
+-- Services & Modules
+-- ============================================================
+local RS = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local PathfindingService = game:GetService("PathfindingService")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local Client = Players.LocalPlayer
+local Character = Client.Character or Client.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+local PlayerGui = Client:WaitForChild("PlayerGui")
+local VU = game:GetService("VirtualUser")
+local Backpack = Client:WaitForChild("Backpack")
+local UserId = Client.UserId
+
+Client.CharacterAdded:Connect(function(c)
+    Character = c
+    Humanoid = c:WaitForChild("Humanoid")
+    RootPart = c:WaitForChild("HumanoidRootPart")
+    Backpack = Client:WaitForChild("Backpack")
+    UpdateActivity()
+end)
+
+local Net = require(RS.Modules.Core.Net)
+local Data_upvr = require(RS.Modules.Core.Data)
+local XPFormula_upvr = nil
+pcall(function() XPFormula_upvr = require(RS.Modules.Game.Skills.XPFormula) end)
+local ItemUtils = nil
+pcall(function() ItemUtils = require(RS.Modules.Game.Inventory.ItemUtils) end)
+
+local ShopLocation = Vector3.new(-135.802, 251.81, 153.361)
+local SellBeaconPos = Vector3.new(-252.746, 252.839, 379.64)
+local SellParkingPos = Vector3.new(-318.5, 252.0, 438.0)
+
+local function UnderPos(pos)
+    return Vector3.new(pos.X, UNDERGROUND_Y, pos.Z)
+end
+
+local Zones = {
+    ["Level 40 +"] = {
+        Pos = Vector3.new(-487.582, 243.031, 821.429),
+        CastPositions = nil
+    },
+    ["Level 70 +"] = {
+        Pos = Vector3.new(2.298, 241.054, 662.031),
+        CastPositions = {
+            Vector3.new(82.113189697266, 245.16184997559, 922.22076416016),
+            Vector3.new(86.844085693359, 244.82890319824, 920.00738525391),
+            Vector3.new(85.839721679688, 244.828125, 919.89892578125)
+        }
+    }
+}
+
+local FishingRods = {
+    {Name = "FishingRodUltimate", Level = 60, Price = 5000},
+    {Name = "FishingRodAdvanced", Level = 35, Price = 2300},
+    {Name = "FishingRodPro", Level = 20, Price = 800},
+    {Name = "FishingRodRegular", Level = 1, Price = 100}
+}
+
+local FishingBaits = {
+    {Name = "PrawntecUltimate", Level = 45, Price = 45},
+    {Name = "PrawntecPro", Level = 30, Price = 40},
+    {Name = "PrawntecRegular", Level = 25, Price = 35},
+    {Name = "WormtecUltimate", Level = 15, Price = 30},
+    {Name = "WormtecPro", Level = 8, Price = 25},
+    {Name = "WormtecRegular", Level = 1, Price = 20}
+}
+
+local BIKE_CRATE_COST = 870
+local BIKE_ATM_CFRAME = CFrame.new(179.200882, 255.290543, -236.355896)
+
+-- ============================================================
+-- Config Save/Load
+-- ============================================================
+local ConfigPath = "UPVR_Fishing_Config.json"
+
+function SaveConfig()
+    local configData = {
+        AutoBuyEnabled = Config.AutoBuyEnabled,
+        RodSelect = Config.RodSelect,
+        BaitSelect = Config.BaitSelect,
+        BaitAmount = Config.BaitAmount,
+        WalkSpeed = Config.WalkSpeed,
+        ZoneSelect = Config.ZoneSelect,
+        Respawn = Config.Respawn,
+        AntiKick = AntiKickEnabled,
+        ServerSwitch = ServerSwitchEnabled,
+        ServerSwitchInterval = ServerSwitchInterval,
+        AutoFarmActive = Config.AutoFarmActive,
+        SkipBadFishEnabled = skipBadFishEnabled,
+        SkipDelay = skipDelay,
+        SkipFishSelected = skipFishSelected,
+        UseVehicle = Config.UseVehicle,
+        VehicleType = Config.VehicleType,
+        VehicleSpeed = Config.VehicleSpeed,
+        AutoRepairVehicle = Config.AutoRepairVehicle
+    }
+    
+    pcall(function()
+        writefile(ConfigPath, HttpService:JSONEncode(configData))
+    end)
+end
+
+function LoadConfig()
+    local success, err = pcall(function()
+        if not isfile(ConfigPath) then return false end
+        local data = HttpService:JSONDecode(readfile(ConfigPath))
+        
+        if data.AutoBuyEnabled ~= nil then Config.AutoBuyEnabled = data.AutoBuyEnabled end
+        if data.RodSelect then Config.RodSelect = data.RodSelect end
+        if data.BaitSelect then Config.BaitSelect = data.BaitSelect end
+        if data.BaitAmount then Config.BaitAmount = data.BaitAmount end
+        if data.WalkSpeed then Config.WalkSpeed = data.WalkSpeed end
+        if data.ZoneSelect then Config.ZoneSelect = data.ZoneSelect end
+        if data.Respawn ~= nil then Config.Respawn = data.Respawn end
+        if data.AntiKick ~= nil then AntiKickEnabled = data.AntiKick end
+        if data.ServerSwitch ~= nil then ServerSwitchEnabled = data.ServerSwitch end
+        if data.ServerSwitchInterval then ServerSwitchInterval = data.ServerSwitchInterval end
+        if data.SkipBadFishEnabled ~= nil then skipBadFishEnabled = data.SkipBadFishEnabled end
+        if data.SkipDelay then skipDelay = data.SkipDelay end
+        if data.SkipFishSelected then skipFishSelected = data.SkipFishSelected end
+        if data.UseVehicle ~= nil then Config.UseVehicle = data.UseVehicle end
+        if data.VehicleType then Config.VehicleType = data.VehicleType end
+        if data.VehicleSpeed then Config.VehicleSpeed = data.VehicleSpeed end
+        if data.AutoRepairVehicle ~= nil then Config.AutoRepairVehicle = data.AutoRepairVehicle end
+        
+        
+        if data.AutoFarmActive then
+            Config.AutoFarmActive = true
+            UpdateActivity()
+            task.spawn(StartAutoFarm)
+        end
+        
+        if AntiKickEnabled then
+            task.spawn(AntiKickLoop)
+        end
+        
+        return true
+    end)
+    
+    return false
+end
+
+function DeleteConfig()
+    pcall(function()
+        if isfile(ConfigPath) then
+            delfile(ConfigPath)
+        end
+    end)
+end
+
+-- ============================================================
+-- Anti Kick + Server Hop
+-- ============================================================
+local function AntiKickLoop()
+    EnableAntiKick(true)
+end
+
+function SwitchToSmallestServer()
+    local servers = {}
+    local req = game:HttpGet(string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId))
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(req)
+    end)
+    
+    if success and data and data.data then
+        local currentJobId = game.JobId
+        for _, v in pairs(data.data) do
+            if v.playing < v.maxPlayers and v.id ~= currentJobId then
+                table.insert(servers, v.id)
+            end
+        end
+    end
+    
+    if #servers > 0 then
+        local targetJobId = servers[math.random(1, #servers)]
+        pcall(SaveConfig)
+        task.wait(1)
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, targetJobId, game.Players.LocalPlayer)
+    end
+end
+
+task.spawn(function()
+    while true do
+        task.wait(30)
+        if ServerSwitchEnabled and Config.AutoFarmActive then
+            local elapsed = (tick() - LastServerSwitchTime) / 60
+            if elapsed >= ServerSwitchInterval then
+                LastServerSwitchTime = tick()
+                task.spawn(SwitchToSmallestServer)
+            end
+        end
+    end
+end)
+
+
+
+-- ============================================================
+-- Webhook
+-- ============================================================
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1529908007964774560/kqGFSEdJSuoYXaxCukQV3HP8-e41okzc0Fp4DPfFLsH4P57uq3JkzUy6717A5epk8ual"
+
+local function SendWebhookMessage(message)
+    pcall(function()
+        local data = {["content"] = message}
+        local body = HttpService:JSONEncode(data)
+        local requestFunc = syn and syn.request or fluxus and fluxus.request or http_request or request
+        if requestFunc then
+            requestFunc({
+                Url = WEBHOOK_URL,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = body
+            })
+        end
+    end)
+end
+
+task.spawn(function()
+    task.wait(2)
+    SendWebhookMessage("✅ النظام يعمل ويرسل ويب هوك بنجاح!")
+end)
+
+-- ============================================================
+-- Inventory Monitoring
+-- ============================================================
+local LastFishCount = {}
+
+local function GetFishNamesFromInventory()
+    local fishList = {}
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not Holding then return fishList end
+    
+    for _, v in pairs(Holding:GetChildren()) do
+        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+            local itemType = v:GetAttribute("ItemType")
+            if itemType and string.lower(tostring(itemType)) == "fish" then
+                local nameLbl = v:FindFirstChild("ItemName")
+                if nameLbl and nameLbl.Text then
+                    table.insert(fishList, nameLbl.Text)
+                end
+            end
+        end
+    end
+    return fishList
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        local currentFish = GetFishNamesFromInventory()
+        local oldMap = {}
+        for _, name in ipairs(LastFishCount) do oldMap[name] = (oldMap[name] or 0) + 1 end
+        for _, name in ipairs(currentFish) do
+            if oldMap[name] then
+                oldMap[name] = oldMap[name] - 1
+                if oldMap[name] < 0 then
+                    if name == "Tuna" or name == "Sailfish" or name == "Marlin" then
+                        SendWebhookMessage("i got " .. name)
+                    end
+                end
+            else
+                if name == "Tuna" or name == "Sailfish" or name == "Marlin" then
+                    SendWebhookMessage("i got " .. name)
+                end
+            end
+        end
+        LastFishCount = currentFish
+    end
+end)
+
+-- ============================================================
+-- Core Sf Functions
+-- ============================================================
+local Sf = {}
+
+function Sf:dist(pos)
+    if typeof(pos) == "Vector3" then
+        return (pos - RootPart.Position).Magnitude
+    elseif typeof(pos) == "CFrame" then
+        return (pos.Position - RootPart.Position).Magnitude
+    elseif typeof(pos) == "Instance" and pos:IsA("BasePart") then
+        return (pos.Position - RootPart.Position).Magnitude
+    end
+    return 9999
+end
+
+function Sf:GetMoney()
+    local moneyData = Data_upvr.money
+    return (moneyData and moneyData.hand) and moneyData.hand or 0
+end
+
+function Sf:GetBankMoney()
+    local moneyData = Data_upvr.money
+    return (moneyData and moneyData.bank) and moneyData.bank or 0
+end
+
+function Sf:GetSkill(skillname)
+    local OptionsSkill = PlayerGui:FindFirstChild('Skills')
+    if not OptionsSkill then return 0 end
+    local Holder = OptionsSkill:FindFirstChild('SkillsHolder').SkillsScrollingFrame
+    for _, v in pairs(Holder:GetChildren()) do
+        if v.Name == "SkillOptionTemplate" and string.find(v:FindFirstChild('SkillTitle').Text, skillname) then
+            return tonumber(v:FindFirstChild('SkillTitle').Text:match("%d+")) or 0
+        end
+    end
+    return 0
+end
+
+function Sf:HasAnyRod()
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not Holding then return false, nil, nil, false end
+    for _, v in pairs(Holding:GetChildren()) do
+        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+            local nameLbl = v:FindFirstChild("ItemName")
+            if nameLbl and nameLbl.Text and string.find(string.lower(nameLbl.Text), "rod") then
+                return true, nameLbl.Text, v.Name, v:FindFirstChild("ItemEquipped") and v.ItemEquipped.Visible or false
+            end
+        end
+    end
+    return false, nil, nil, false
+end
+
+function Sf:HasAnyBait()
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not Holding then return false, nil, nil end
+    for _, v in pairs(Holding:GetChildren()) do
+        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+            local nameLbl = v:FindFirstChild("ItemName")
+            if nameLbl and nameLbl.Text and (string.find(string.lower(nameLbl.Text), "wormtec") or string.find(string.lower(nameLbl.Text), "prawntec")) then
+                return true, nameLbl.Text, v.Name
+            end
+        end
+    end
+    return false, nil, nil
+end
+
+function Sf:GetFishCount()
+    local count = 0
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not Holding then return 0 end
+    for _, v in pairs(Holding:GetChildren()) do
+        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+            local itemType = v:GetAttribute("ItemType")
+            if itemType and string.lower(tostring(itemType)) == "fish" then count = count + 1 end
+        end
+    end
+    return count
+end
+
+function Sf:GetInventoryCount()
+    local count = 0
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not Holding then return 0 end
+    for _, v in pairs(Holding:GetChildren()) do
+        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then count = count + 1 end
+    end
+    return count
+end
+
+function Sf:GetTotalLevel()
+    local ok, level = pcall(function()
+        if Data_upvr and Data_upvr.xp and Data_upvr.xp.total_level and XPFormula_upvr then
+            return XPFormula_upvr.xp_to_level(Data_upvr.xp.total_level) or 0
+        end
+        return 0
+    end)
+    return (ok and level) or 0
+end
+
+-- نظام المخزون: أقل من total level 8 = 15 سلوت، 8 فأكثر = 17
+function Sf:IsInventoryFull()
+    local totalLevel = self:GetTotalLevel() or 0
+    local maxSlots = 15
+    if totalLevel >= 8 then
+        maxSlots = 17
+    end
+
+    local currentCount = 0
+    local counted = false
+    if ItemUtils and Data_upvr then
+        local ok = pcall(function()
+            ItemUtils.iterate_through_items(Data_upvr, function(item)
+                if item and item.location == "hand" then
+                    currentCount = currentCount + 1
+                end
+            end)
+            counted = true
+        end)
+        if not ok then counted = false end
+    end
+    if not counted then
+        currentCount = self:GetInventoryCount()
+    end
+
+    local isFull = currentCount >= maxSlots
+    return isFull, currentCount, maxSlots
+end
+
+function Sf:IsRodEquipped(rodName)
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not Holding then return false end
+    for _, v in pairs(Holding:GetChildren()) do
+        if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+            local nameLbl = v:FindFirstChild("ItemName")
+            if nameLbl and nameLbl.Text == rodName then
+                local equipped = v:FindFirstChild("ItemEquipped")
+                if equipped and equipped.Visible then return true end
+            end
+        end
+    end
+    return false
+end
+
+-- ============================================================
+-- Vehicle System
+-- ============================================================
+function Sf:GetOwnedVehicle()
+    for _, vehicle in ipairs(workspace.Vehicles:GetChildren()) do
+        if vehicle:GetAttribute('OwnerUserId') == UserId and vehicle.PrimaryPart then
+            return vehicle
+        end
+    end
+    return nil
+end
+
+function Sf:GetVehicleNameFromInventory()
+    local ScrollingFrame = PlayerGui:FindFirstChild("Items") and PlayerGui.Items:FindFirstChild("ItemsHolder") and PlayerGui.Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not ScrollingFrame then return nil end
+    
+    if Config.VehicleType == "Bike" then
+        for _, v in ipairs(ScrollingFrame:GetChildren()) do
+            if v:GetAttribute("ItemType") == "bike" then
+                return v.ItemName.Text
+            end
+        end
+    else
+        for _, v in ipairs(ScrollingFrame:GetChildren()) do
+            if v:GetAttribute('ItemType') == "car" then
+                return v.ItemName.Text
+            end
+        end
+    end
+    return nil
+end
+
+function Sf:GetVehicleHealth(vehicleName)
+    local ScrollingFrame = PlayerGui:FindFirstChild("Items") and PlayerGui.Items:FindFirstChild("ItemsHolder") and PlayerGui.Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not ScrollingFrame then return nil, nil, nil end
+    for _, v in ipairs(ScrollingFrame:GetChildren()) do
+        if (v:GetAttribute('ItemType') == "car" or v:GetAttribute('ItemType') == "bike") and v.ItemName.Text == vehicleName then
+            local healthLabel = v:FindFirstChild("ItemHealth")
+            if healthLabel and healthLabel.Text then
+                local current, max = healthLabel.Text:match("(%d+)/(%d+)")
+                return tonumber(current), tonumber(max), v.Name
+            end
+        end
+    end
+    return nil, nil, nil
+end
+
+function Sf:BuyBikeCrate()
+    local bikeCrate = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Tiles") and workspace.Map.Tiles:FindFirstChild("BurgerPlaceTile") 
+        and workspace.Map.Tiles.BurgerPlaceTile:FindFirstChild("UrbanCyclesAndSkates") 
+        and workspace.Map.Tiles.BurgerPlaceTile.UrbanCyclesAndSkates:FindFirstChild("Interior")
+        and workspace.Map.Tiles.BurgerPlaceTile.UrbanCyclesAndSkates.Interior:FindFirstChild("Crates")
+        and workspace.Map.Tiles.BurgerPlaceTile.UrbanCyclesAndSkates.Interior.Crates:FindFirstChild("Bike Crate")
+    
+    if not bikeCrate then return false end
+    local touchPart = bikeCrate:FindFirstChild("Beacon") and bikeCrate.Beacon:FindFirstChild("TouchPart")
+    if not touchPart then return false end
+
+    if Sf:GetMoney() < BIKE_CRATE_COST then
+        if Sf:GetBankMoney() >= BIKE_CRATE_COST then
+            Sf:SmartMoveTo(BIKE_ATM_CFRAME.Position)
+            task.wait(0.3)
+            local needed = BIKE_CRATE_COST - Sf:GetMoney()
+            if needed > 0 then
+                pcall(function() Net.get("transfer_funds", "bank", "hand", needed) end)
+                task.wait(0.4)
+            end
+        else
+            return false
+        end
+    end
+
+    Sf:SmartMoveTo(touchPart.Position)
+    task.wait(0.3)
+    pcall(function()
+        Net.get("open_crate", bikeCrate:WaitForChild("CrateOptions"):WaitForChild("Basic"), "money")
+    end)
+    task.wait(0.8)
+    return true
+end
+
+function Sf:GetVehicleUidFromInventory()
+    local ScrollingFrame = PlayerGui:FindFirstChild("Items") and PlayerGui.Items:FindFirstChild("ItemsHolder") and PlayerGui.Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if not ScrollingFrame then return nil, nil end
+    local wantType = (Config.VehicleType == "Bike") and "bike" or "car"
+    for _, v in ipairs(ScrollingFrame:GetChildren()) do
+        if v:GetAttribute("ItemType") == wantType and v:FindFirstChild("ItemName") then
+            return v.ItemName.Text, v.Name, v:FindFirstChild("ItemEquipped") and v.ItemEquipped.Visible or false
+        end
+    end
+    return nil, nil, false
+end
+
+function Sf:RespawnAndMountVehicle()
+    local existing = Sf:GetOwnedVehicle()
+    if existing and existing.PrimaryPart then
+        if Humanoid and Humanoid.Sit then
+            return existing
+        end
+        Sf:EnterVehicle(existing)
+        local sitTriesFast = 0
+        while Humanoid and not Humanoid.Sit and sitTriesFast < 8 and Config.AutoFarmActive do
+            Sf:EnterVehicle(existing)
+            task.wait(0.12)
+            sitTriesFast = sitTriesFast + 1
+        end
+        if Humanoid and Humanoid.Sit then
+            return existing
+        end
+    end
+
+    if Humanoid and Humanoid.Sit then
+        Sf:ExitVehicle()
+        task.wait(0.2)
+    end
+    
+    local vehicleName, vehicleUid, equipped = Sf:GetVehicleUidFromInventory()
+    if not vehicleName then
+        local spawned = Sf:EnsureVehicle()
+        if spawned then
+            Sf:EnterVehicle(spawned)
+            task.wait(0.15)
+            return spawned
+        end
+        return nil
+    end
+    
+    -- دائماً نسحبها أولاً حتى لو مرسبنة
+    local pullTries = 0
+    while (Sf:GetOwnedVehicle() or equipped) and pullTries < 8 and Config.AutoFarmActive do
+        pcall(function() Net.get("toggle_equip_item", tostring(vehicleUid)) end)
+        task.wait(0.25)
+        _, vehicleUid, equipped = Sf:GetVehicleUidFromInventory()
+        if not Sf:GetOwnedVehicle() and not equipped then
+            break
+        end
+        pullTries = pullTries + 1
+    end
+    task.wait(0.15)
+    
+    -- بعد السحب نرسبنها من جديد
+    pcall(function() Net.get("toggle_equip_item", tostring(vehicleUid)) end)
+    
+    local vehicle = nil
+    local tries = 0
+    while tries < 20 and Config.AutoFarmActive do
+        vehicle = Sf:GetOwnedVehicle()
+        if vehicle and vehicle.PrimaryPart then break end
+        task.wait(0.15)
+        tries = tries + 1
+    end
+    
+    if not vehicle then
+        return nil
+    end
+    
+    task.wait(0.1)
+    Sf:EnterVehicle(vehicle)
+    
+    local sitTries = 0
+    while Humanoid and not Humanoid.Sit and sitTries < 15 and Config.AutoFarmActive do
+        Sf:EnterVehicle(vehicle)
+        task.wait(0.12)
+        sitTries = sitTries + 1
+    end
+    
+    if Humanoid and Humanoid.Sit then
+    else
+    end
+    
+    return vehicle
+end
+
+function Sf:EnsureVehicle()
+    local vehicle = Sf:GetOwnedVehicle()
+    if vehicle then return vehicle end
+    
+    local vehicleName = Sf:GetVehicleNameFromInventory()
+    if not vehicleName then
+        if Config.VehicleType == "Bike" then
+            Sf:BuyBikeCrate()
+            task.wait(1)
+            vehicleName = Sf:GetVehicleNameFromInventory()
+        end
+        if not vehicleName then return nil end
+    end
+    
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if Holding then
+        for _, v in pairs(Holding:GetChildren()) do
+            if v:FindFirstChild("ItemName") and v.ItemName.Text == vehicleName then
+                local equipped = v:FindFirstChild("ItemEquipped")
+                if not (equipped and equipped.Visible) then
+                    pcall(function() Net.get("toggle_equip_item", tostring(v.Name)) end)
+                    task.wait(0.4)
+                end
+                break
+            end
+        end
+    end
+    
+    task.wait(0.5)
+    return Sf:GetOwnedVehicle()
+end
+
+function Sf:ExitVehicle()
+    if Humanoid and Humanoid.Sit then
+        pcall(function() Net.get("exit_seat") end)
+        task.wait(0.15)
+        if RootPart then
+            RootPart.CFrame = RootPart.CFrame * CFrame.new(-4, 0, 0)
+        end
+        task.wait(0.1)
+    end
+end
+
+function Sf:EnterVehicle(vehicle)
+    if not vehicle or not vehicle.PrimaryPart then return false end
+    if Humanoid.Sit then return true end
+    
+    pcall(function() Net.send("lock_vehicle", vehicle, true) end)
+    
+    -- تحت الأرض ما ننقّل المركبة لفوق، بس نركب اللي تحتنا
+    local currentTime = tick()
+    local alreadyUnder = vehicle.PrimaryPart.Position.Y < 240
+    if (not alreadyUnder) and currentTime - LastVehicleTeleport >= 0.6 then
+        local charLook = RootPart.CFrame.LookVector
+        local vehicleRotation = CFrame.new(RootPart.Position + Vector3.new(0, 6, 0)) * CFrame.Angles(0, math.atan2(charLook.X, charLook.Z), 0)
+        vehicle:PivotTo(vehicleRotation)
+        LastVehicleTeleport = currentTime
+        task.wait(0.05)
+    end
+    
+    for _, prompt in pairs(vehicle.PrimaryPart:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") then
+            fireproximityprompt(prompt)
+            task.wait(0.05)
+        end
+    end
+    
+    local waitCount = 0
+    while not Humanoid.Sit and waitCount < 12 and Config.AutoFarmActive do
+        task.wait(0.1)
+        waitCount = waitCount + 1
+    end
+    
+    return Humanoid.Sit
+end
+
+function Sf:RepairVehicleIfNeeded(vehicleName)
+    if not Config.AutoRepairVehicle then return end
+    local currentHP, maxHP, vehicleUID = Sf:GetVehicleHealth(vehicleName)
+    if currentHP and maxHP and (maxHP - currentHP) >= 800 then
+        if Sf:GetMoney() < 1000 then
+            if Sf:GetBankMoney() >= 1000 then
+                pcall(function() Net.get("transfer_funds", "bank", "hand", 1000) end)
+                task.wait(0.3)
+            end
+        end
+        pcall(function() Net.get("repair_vehicle", vehicleUID) end)
+        task.wait(0.4)
+    end
+end
+
+-- ============================================================
+-- نزول سموث + طبقة وهمية (من ملف التحت أرض، بدون تغيير نقاط الفارم)
+-- ============================================================
+local HiddenPlatform = nil
+
+function Sf:CreateHiddenPlatform(vehicle)
+    if HiddenPlatform and HiddenPlatform.Parent then
+        HiddenPlatform:Destroy()
+    end
+    
+    local platform = Instance.new("Part")
+    platform.Name = "HiddenFlightPlatform"
+    platform.Size = Vector3.new(18, 2, 18)
+    platform.Transparency = 1
+    platform.CanCollide = true
+    platform.Anchored = true
+    platform.Material = Enum.Material.SmoothPlastic
+    platform.Parent = workspace
+    
+    if vehicle and vehicle.PrimaryPart then
+        local pos = vehicle.PrimaryPart.Position
+        platform.CFrame = CFrame.new(pos.X, pos.Y - 1.5, pos.Z)
+    else
+        platform.CFrame = CFrame.new(0, UNDERGROUND_Y - 1.5, 0)
+    end
+    
+    HiddenPlatform = platform
+    return platform
+end
+
+function Sf:UpdateHiddenPlatform(vehicle)
+    if not HiddenPlatform or not HiddenPlatform.Parent then return end
+    if not vehicle or not vehicle.PrimaryPart then return end
+    local pos = vehicle.PrimaryPart.Position
+    HiddenPlatform.CFrame = CFrame.new(pos.X, pos.Y - 1.5, pos.Z)
+end
+
+function Sf:DestroyHiddenPlatform()
+    if HiddenPlatform and HiddenPlatform.Parent then
+        HiddenPlatform:Destroy()
+    end
+    HiddenPlatform = nil
+end
+
+function Sf:SmoothVerticalMove(targetY, duration, forceMove)
+    duration = duration or 1.5
+    if not RootPart or not Humanoid then return end
+    
+    local vehicle = Sf:GetOwnedVehicle()
+    local useVehicle = Config.UseVehicle and vehicle and vehicle.PrimaryPart
+    
+    if useVehicle then
+        if not Humanoid.Sit then
+            Sf:EnterVehicle(vehicle)
+            task.wait(0.3)
+        end
+        vehicle = Sf:GetOwnedVehicle()
+        if not (vehicle and vehicle.PrimaryPart) then
+            useVehicle = false
+        end
+    end
+    
+    local startCFrame
+    if useVehicle then
+        startCFrame = vehicle:GetPivot()
+    else
+        startCFrame = RootPart.CFrame
+    end
+    
+    local startY = startCFrame.Position.Y
+    local startXZ = Vector3.new(startCFrame.Position.X, 0, startCFrame.Position.Z)
+    local rotOnly = startCFrame - startCFrame.Position
+    local startTime = tick()
+    
+    if useVehicle then
+        Sf:CreateHiddenPlatform(vehicle)
+    end
+    
+    local function ForceHold(cframe)
+        if useVehicle and vehicle and vehicle.PrimaryPart then
+            vehicle:PivotTo(cframe)
+            for _, part in ipairs(vehicle:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.AssemblyLinearVelocity = Vector3.zero
+                    part.AssemblyAngularVelocity = Vector3.zero
+                end
+            end
+            Sf:UpdateHiddenPlatform(vehicle)
+            if Humanoid then Humanoid.Sit = true end
+            if RootPart then
+                RootPart.AssemblyLinearVelocity = Vector3.zero
+                RootPart.AssemblyAngularVelocity = Vector3.zero
+            end
+        elseif RootPart then
+            RootPart.CFrame = cframe
+            RootPart.AssemblyLinearVelocity = Vector3.zero
+            RootPart.AssemblyAngularVelocity = Vector3.zero
+        end
+    end
+    
+    while (tick() - startTime) < duration and (forceMove or (Config.AutoFarmActive and not isProtectionTriggered)) do
+        local alpha = math.clamp((tick() - startTime) / duration, 0, 1)
+        alpha = alpha * alpha * (3 - 2 * alpha)
+        local newY = startY + (targetY - startY) * alpha
+        local newPos = Vector3.new(startXZ.X, newY, startXZ.Z)
+        ForceHold(CFrame.new(newPos) * rotOnly)
+        task.wait(0.016)
+    end
+    
+    local finalCFrame = CFrame.new(Vector3.new(startXZ.X, targetY, startXZ.Z)) * rotOnly
+    local lockEnd = tick() + 0.35
+    while tick() < lockEnd and (forceMove or Config.AutoFarmActive) do
+        ForceHold(finalCFrame)
+        task.wait(0.016)
+    end
+    
+    UpdateActivity()
+end
+
+function Sf:HoldHeight(targetY, seconds)
+    seconds = seconds or 0.4
+    local untilTime = tick() + seconds
+    while tick() < untilTime and Config.AutoFarmActive do
+        local vehicle = Sf:GetOwnedVehicle()
+        if vehicle and vehicle.PrimaryPart then
+            local pos = vehicle.PrimaryPart.Position
+            vehicle:PivotTo(CFrame.new(pos.X, targetY, pos.Z) * (vehicle:GetPivot() - vehicle:GetPivot().Position))
+            Sf:UpdateHiddenPlatform(vehicle)
+            for _, part in ipairs(vehicle:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.AssemblyLinearVelocity = Vector3.zero
+                    part.AssemblyAngularVelocity = Vector3.zero
+                end
+            end
+        elseif RootPart then
+            local pos = RootPart.Position
+            RootPart.CFrame = CFrame.new(pos.X, targetY, pos.Z) * (RootPart.CFrame - RootPart.CFrame.Position)
+        end
+        task.wait(0.016)
+    end
+end
+
+function Sf:RiseDoDescend(surfaceY, actionFn, durationUp, durationDown)
+    durationUp = durationUp or 1.1
+    -- قريب من النقطة، يبقى تحت، وما ينزل بعد الأمر
+    local interactY = (surfaceY or 252) - INTERACT_DROP
+    Sf:SmoothVerticalMove(interactY, durationUp)
+    Sf:HoldHeight(interactY, 0.35)
+    if actionFn then actionFn() end
+    Sf:HoldHeight(interactY, 0.45)
+    
+    local vehicle = Sf:GetOwnedVehicle()
+    if vehicle and Humanoid and not Humanoid.Sit then
+        Sf:EnterVehicle(vehicle)
+    end
+end
+
+function Sf:Drive(vehicle, destination, continueCheck)
+    if not vehicle or not vehicle.PrimaryPart then return end
+    Config.StopWalking = false
+    Config.Running = true
+    
+    -- تحت الأرض ما فيه نافمش، نسوق خط مستقيم على نفس الارتفاع
+    if typeof(destination) == "CFrame" then
+        destination = destination.Position
+    end
+    local targetY = destination.Y
+    destination = Vector3.new(destination.X, targetY, destination.Z)
+    
+    Sf:CreateHiddenPlatform(vehicle)
+    
+    if not Humanoid.Sit then
+        Sf:EnterVehicle(vehicle)
+        task.wait(0.15)
+    end
+    
+    local goalPos = Vector3.new(destination.X, targetY, destination.Z)
+    local speed = Config.VehicleSpeed or 55
+    local lookAhead = 16
+    local sideStep = 12
+    local arriveDist = 4
+    local maxTime = 28
+    local startTime = tick()
+    local lastTick = tick()
+    
+    local function rayFilter()
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        local filter = {Character}
+        if vehicle then table.insert(filter, vehicle) end
+        if HiddenPlatform then table.insert(filter, HiddenPlatform) end
+        params.FilterDescendantsInstances = filter
+        params.IgnoreWater = true
+        return params
+    end
+    
+    local function blocked(from, dirFlat, dist)
+        if dirFlat.Magnitude < 0.05 then return false end
+        local origin = Vector3.new(from.X, targetY, from.Z)
+        local hit = workspace:Raycast(origin, dirFlat.Unit * dist, rayFilter())
+        return hit ~= nil
+    end
+    
+    while Config.AutoFarmActive and not Config.StopWalking and not isProtectionTriggered do
+        task.wait()
+        if not vehicle or not vehicle.PrimaryPart then
+            Config.Running = false
+            return
+        end
+        if continueCheck and not continueCheck() then break end
+        if tick() - startTime > maxTime then break end
+        
+        if Humanoid and not Humanoid.Sit then
+            Sf:EnterVehicle(vehicle)
+        end
+        
+        local now = Vector3.new(vehicle.PrimaryPart.Position.X, targetY, vehicle.PrimaryPart.Position.Z)
+        local toGoal = Vector3.new(goalPos.X - now.X, 0, goalPos.Z - now.Z)
+        if toGoal.Magnitude <= arriveDist then break end
+        
+        local dir = toGoal.Unit
+        local right = Vector3.new(-dir.Z, 0, dir.X)
+        
+        -- إذا جدار قدام، نلف يمين أو يسار
+        if blocked(now, dir, lookAhead) then
+            local leftFree = not blocked(now, dir + right * -1.2, lookAhead)
+            local rightFree = not blocked(now, dir + right * 1.2, lookAhead)
+            if leftFree and not rightFree then
+                dir = (dir * 0.25 + right * -1).Unit
+            elseif rightFree and not leftFree then
+                dir = (dir * 0.25 + right).Unit
+            elseif leftFree or rightFree then
+                -- الاثنين فاضي، نختار الأقرب للهدف
+                local leftPos = now + right * -sideStep
+                local rightPos = now + right * sideStep
+                if (leftPos - goalPos).Magnitude < (rightPos - goalPos).Magnitude then
+                    dir = (dir * 0.2 + right * -1).Unit
+                else
+                    dir = (dir * 0.2 + right).Unit
+                end
+            else
+                -- مسدود، نرجع شوي ونحاول جنب أكبر
+                dir = (right * ((tick() % 2 < 1) and 1 or -1)).Unit
+            end
+        end
+        
+        local nowTick = tick()
+        local dt = math.clamp(nowTick - lastTick, 0, 0.05)
+        lastTick = nowTick
+        local step = math.min(speed * dt, toGoal.Magnitude)
+        local newPos = Vector3.new(now.X + dir.X * step, targetY, now.Z + dir.Z * step)
+        
+        local Rotation = CFrame.new(newPos) * CFrame.Angles(0, math.atan2(dir.X, dir.Z), 0)
+        vehicle:PivotTo(Rotation)
+        Sf:UpdateHiddenPlatform(vehicle)
+        
+        for _, part in ipairs(vehicle:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.AssemblyLinearVelocity = Vector3.zero
+                part.AssemblyAngularVelocity = Vector3.zero
+            end
+        end
+    end
+    
+    Config.Running = false
+    UpdateActivity()
+end
+
+function Sf:WalkTo(destination, continueCheck, speed)
+    if isProtectionTriggered then return end
+    Config.StopWalking = false
+    Config.Running = true
+    
+    local path = PathfindingService:CreatePath({
+        AgentCanJump = true, AgentJumpHeight = 2.5, AgentHeight = 8, AgentRadius = 2.5, AgentMaxSlope = 90,
+        Costs = {BlockedNode = 50, DoorArea = 1}
+    })
+    
+    local success = pcall(function() path:ComputeAsync(RootPart.Position, destination) end)
+    if not success or path.Status ~= Enum.PathStatus.Success then
+        Config.Running = false
+        return
+    end
+    
+    local waypoints = path:GetWaypoints()
+    speed = speed or Config.WalkSpeed or 20
+    
+    for _, wp in pairs(waypoints) do
+        if isProtectionTriggered or not Config.AutoFarmActive or Config.StopWalking then
+            Config.Running = false
+            return
+        end
+        if continueCheck and not continueCheck() then
+            Config.Running = false
+            return
+        end
+        
+        local offsetY = (wp.Action == Enum.PathWaypointAction.Jump) and 10 or 4
+        local targetPos = wp.Position + Vector3.new(0, offsetY, 0)
+        local startPos = RootPart.Position
+        local dir = (targetPos - startPos).Unit
+        local dist = (targetPos - startPos).Magnitude
+        local movedDist = 0
+        local startTime = tick()
+        
+        while movedDist < dist and Config.AutoFarmActive and not Config.StopWalking and not isProtectionTriggered do
+            task.wait()
+            if Humanoid.Health <= 0 then break end
+            if continueCheck and not continueCheck() then break end
+            
+            local elapsed = tick() - startTime
+            movedDist = math.min(elapsed * speed, dist)
+            local newPos = startPos + dir * movedDist
+            if Humanoid.Sit then Humanoid.Sit = false end
+            RootPart:PivotTo(CFrame.new(newPos))
+            pcall(function() Net.send("set_sprinting_1", true) end)
+        end
+    end
+    Config.Running = false
+    UpdateActivity()
+end
+
+function Sf:SmartMoveTo(destination, continueCheck)
+    if not Config.AutoFarmActive or isProtectionTriggered then return end
+    
+    -- نقاط السطح (بيع/دكان/صراف) ننزلها، نقطة المنطقة تبقى بنفس ارتفاعها بالزبط
+    if destination.Y > 245 then
+        destination = UnderPos(destination)
+    end
+    
+    local maxTime = 40
+    local startTime = tick()
+    
+    local function stillOk()
+        return Config.AutoFarmActive and not isProtectionTriggered and (tick() - startTime) < maxTime
+    end
+    
+    Character = Client.Character
+    Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+    
+    local vehicle = Sf:EnsureVehicle()
+    if vehicle then
+        Sf:CreateHiddenPlatform(vehicle)
+        
+        if Humanoid and not Humanoid.Sit then
+            Sf:EnterVehicle(vehicle)
+            task.wait(0.15)
+        end
+        
+        if stillOk() then
+            Sf:Drive(vehicle, destination, function()
+                return stillOk() and (continueCheck and continueCheck() or true)
+            end)
+            return
+        end
+    end
+end
+
+-- حماية المركبة من السقوط
+task.spawn(function()
+    while task.wait(0.15) do
+        if not Config.AutoFarmActive or not Config.UseVehicle then continue end
+        pcall(function()
+            for _, vehicle in pairs(workspace.Vehicles:GetChildren()) do
+                if vehicle:GetAttribute('OwnerUserId') == UserId and vehicle.PrimaryPart then
+                    local currentY = vehicle.PrimaryPart.Position.Y
+                    if currentY < UNDERGROUND_Y - 1 then
+                        vehicle:PivotTo(CFrame.new(vehicle.PrimaryPart.Position.X, UNDERGROUND_Y, vehicle.PrimaryPart.Position.Z) * vehicle:GetPivot().Rotation)
+                        for _, part in pairs(vehicle:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.AssemblyLinearVelocity = Vector3.zero
+                                part.AssemblyAngularVelocity = Vector3.zero
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- ============================================================
+-- Smart Protection System (الأهم)
+-- ============================================================
+local function SavePositions()
+    if Character and RootPart then
+        lastKnownCFrame = RootPart.CFrame
+    end
+    local vehicle = Sf:GetOwnedVehicle()
+    if vehicle and vehicle.PrimaryPart then
+        lastKnownVehicleCFrame = vehicle:GetPivot()
+    end
+end
+
+local function RestoreAndContinue()
+    if not Config.AutoFarmActive then return end
+    
+    
+    Character = Client.Character
+    Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+    
+    local vehicle = Sf:GetOwnedVehicle()
+    if vehicle and vehicle.PrimaryPart then
+        for _, part in pairs(vehicle:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.AssemblyLinearVelocity = Vector3.zero
+                part.AssemblyAngularVelocity = Vector3.zero
+            end
+        end
+        if Humanoid and not Humanoid.Sit then
+            Sf:EnterVehicle(vehicle)
+            task.wait(0.25)
+        end
+    end
+    
+    Config.StopWalking = false
+    Config.Running = false
+    isProtectionTriggered = false
+    UpdateActivity()
+end
+
+local function PauseFarmingTemporarily()
+    if isProtectionTriggered then return end
+    if (tick() - lastProtectionTime) < ProtectionCooldown then return end
+    
+    isProtectionTriggered = true
+    lastProtectionTime = tick()
+    Config.StopWalking = true
+    Config.Running = false
+    
+    SavePositions()
+    
+    
+    if RootPart then
+        RootPart.Anchored = false
+        RootPart.AssemblyLinearVelocity = Vector3.zero
+        RootPart.AssemblyAngularVelocity = Vector3.zero
+    end
+    
+    task.wait(2.8)
+    
+    if Config.AutoFarmActive then
+        RestoreAndContinue()
+    else
+        isProtectionTriggered = false
+    end
+end
+
+task.spawn(function()
+    local SendRemote = RS:WaitForChild("Remotes"):WaitForChild("Send")
+    SendRemote.OnClientEvent:Connect(function(eventName, ...)
+        if eventName == "notification" then
+            local args = {...}
+            local message = tostring(args[2] or "")
+            local keywords = {
+                "Anti noclip triggered",
+                "Teleport detected",
+                "Speed hack detected",
+                "Exploit detected",
+                "Cheat detected",
+                "Suspicious movement",
+                "Invalid position",
+                "Anti teleport"
+            }
+            for _, keyword in ipairs(keywords) do
+                if message:lower():find(keyword:lower()) then
+                    if Config.AutoFarmActive and not isProtectionTriggered then
+                        task.spawn(PauseFarmingTemporarily)
+                    end
+                    break
+                end
+            end
+        end
+    end)
+end)
+
+-- ============================================================
+-- تسكيب السمك على الخط (من RealGUI)
+-- ============================================================
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local function pressKey2()
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Two, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Two, false, game)
+    end)
+end
+
+local function exactFishName(name)
+    if not name then return nil end
+    name = tostring(name)
+    if fishList[name] ~= nil then
+        return name
+    end
+    return nil
+end
+
+local function parseFishNameFromText(text)
+    if not text or text == "" then return nil end
+    local raw = tostring(text)
+    local exact = exactFishName(raw)
+    if exact then return exact end
+    local inside = string.match(raw, "%(([^%)]+)%)")
+    if inside then
+        inside = string.gsub(inside, "^%s+", "")
+        inside = string.gsub(inside, "%s+$", "")
+        exact = exactFishName(inside)
+        if exact then return exact end
+    end
+    return nil
+end
+
+local function fishNameFromModel(inst)
+    local cur = inst
+    for _ = 1, 8 do
+        if not cur then break end
+        local exact = exactFishName(cur.Name)
+        if exact then return exact end
+        cur = cur.Parent
+    end
+    return nil
+end
+
+local function readLabelsNear(inst)
+    if not inst then return nil end
+    local fromModel = fishNameFromModel(inst)
+    if fromModel then return fromModel end
+    local parsed = parseFishNameFromText(inst.Name)
+    if parsed then return parsed end
+    if inst:IsA("StringValue") or inst:IsA("ObjectValue") then
+        parsed = parseFishNameFromText(tostring(inst.Value))
+        if parsed then return parsed end
+    end
+    for _, attrVal in pairs(inst:GetAttributes()) do
+        parsed = parseFishNameFromText(tostring(attrVal))
+        if parsed then return parsed end
+    end
+    if inst:IsA("BillboardGui") or inst:IsA("SurfaceGui") or inst:IsA("TextLabel") or inst:IsA("TextButton") then
+        local t = inst.Text
+        if t then
+            parsed = parseFishNameFromText(t)
+            if parsed then return parsed end
+        end
+    end
+    for _, child in ipairs(inst:GetChildren()) do
+        if child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
+            for _, lab in ipairs(child:GetChildren()) do
+                if lab:IsA("TextLabel") or lab:IsA("TextButton") then
+                    parsed = parseFishNameFromText(lab.Text)
+                    if parsed then return parsed end
+                end
+            end
+        elseif child:IsA("TextLabel") or child:IsA("TextButton") then
+            parsed = parseFishNameFromText(child.Text)
+            if parsed then return parsed end
+        end
+    end
+    return nil
+end
+
+local function GetRodInHand()
+    local char = Client.Character
+    if not char then return nil end
+    local equipped = char:FindFirstChildOfClass("Tool")
+    if equipped then
+        local n = string.lower(tostring(equipped.Name))
+        if string.find(n, "rod") or string.find(n, "fish") then
+            return equipped
+        end
+    end
+    local rodNames = {"FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"}
+    for _, name in ipairs(rodNames) do
+        local t = char:FindFirstChild(name)
+        if t then return t end
+    end
+    for _, child in ipairs(char:GetChildren()) do
+        if child:IsA("Tool") then
+            local n = string.lower(tostring(child.Name))
+            if string.find(n, "rod") or string.find(n, "fish") then
+                return child
+            end
+        end
+    end
+    return nil
+end
+
+local function getHookedFishName()
+    local function isUnder(inst, ancestor)
+        local cur = inst
+        while cur do
+            if cur == ancestor then return true end
+            cur = cur.Parent
+        end
+        return false
+    end
+
+    local function otherEnd(obj, rod)
+        local ends = {}
+        for _, prop in ipairs({"Attachment0", "Attachment1", "Part0", "Part1"}) do
+            local ok, val = pcall(function()
+                return obj[prop]
+            end)
+            if ok and typeof(val) == "Instance" then
+                if val:IsA("Attachment") then
+                    table.insert(ends, val.Parent)
+                else
+                    table.insert(ends, val)
+                end
+            end
+        end
+        for _, node in ipairs(ends) do
+            if node and not isUnder(node, rod) then
+                return node
+            end
+        end
+        return ends[2]
+    end
+
+    local function scanForFish(inst, depth)
+        if not inst then return nil end
+        depth = depth or 0
+        local n = readLabelsNear(inst)
+        if n then return n end
+        if depth >= 3 then return nil end
+        for _, child in ipairs(inst:GetChildren()) do
+            n = scanForFish(child, depth + 1)
+            if n then return n end
+        end
+        if inst.Parent and inst.Parent ~= workspace and not inst.Parent:IsA("Tool") then
+            return readLabelsNear(inst.Parent)
+        end
+        return nil
+    end
+
+    local function fromRodLine(rod)
+        if not rod then return nil end
+        local found = nil
+        pcall(function()
+            local n = scanForFish(rod, 0)
+            if n then found = n return end
+            for _, v in ipairs(rod:GetDescendants()) do
+                n = readLabelsNear(v)
+                if n then found = n return end
+                if v:IsA("Beam") or v:IsA("Trail")
+                    or v:IsA("RopeConstraint") or v:IsA("RodConstraint")
+                    or v:IsA("SpringConstraint") then
+                    local other = otherEnd(v, rod)
+                    if other then
+                        n = scanForFish(other, 0)
+                        if n then found = n return end
+                        local cur = other
+                        for _ = 1, 6 do
+                            if not cur then break end
+                            n = readLabelsNear(cur)
+                            if n then found = n return end
+                            cur = cur.Parent
+                            if not cur or cur == workspace or cur:IsA("Tool") then break end
+                        end
+                    end
+                end
+            end
+        end)
+        return found
+    end
+
+    local ok, result = pcall(function()
+        local rod = GetRodInHand()
+        if not rod then return nil end
+        return fromRodLine(rod)
+    end)
+    if ok then return result end
+    return nil
+end
+
+local function isSkipTarget(fishName)
+    return skipBadFishEnabled and fishName and skipFishSelected[fishName] == true
+end
+
+local function doSkipHookedFish(fishName, alreadyWaited)
+    if isSkippingFish then return false end
+    isSkippingFish = true
+    if not alreadyWaited and skipDelay > 0 then
+        local waited = 0
+        while waited < skipDelay do
+            if not skipBadFishEnabled or not Config.AutoFarmActive then
+                break
+            end
+            task.wait(0.05)
+            waited = waited + 0.05
+        end
+    end
+    if not skipBadFishEnabled then
+        isSkippingFish = false
+        return false
+    end
+    pressKey2()
+    task.wait(0.05)
+    pressKey2()
+    isSkippingFish = false
+    UpdateActivity()
+    return true
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if not isSkippingFish and not Config.AutoFarmActive then
+            local fishName = getHookedFishName()
+            if fishName and skipBadFishEnabled and skipFishSelected[fishName] == true then
+                doSkipHookedFish(fishName)
+            end
+        end
+    end
+end)
+
+-- ============================================================
+-- Sell + Money + Buy
+-- ============================================================
+function Sf:SellAllFish()
+    task.wait(0.3)
+    pcall(function() Net.get("sell_all_fish") end)
+    task.wait(0.4)
+end
+
+function Sf:SellFishWithPath()
+    local vehicle = Sf:EnsureVehicle()
+    if vehicle and not Humanoid.Sit then
+        Sf:EnterVehicle(vehicle)
+        task.wait(0.2)
+    end
+    
+    -- روح مباشرة لنقطة البيع بدون توقف وسيط
+    Sf:SmartMoveTo(SellBeaconPos)
+    if not Config.AutoFarmActive or isProtectionTriggered then return false end
+    
+    Sf:RiseDoDescend(SellBeaconPos.Y, function()
+        Sf:SellAllFish()
+        task.wait(0.4)
+    end)
+    
+    UpdateActivity()
+    return true
+end
+
+function Sf:IsATMAvailable(atm)
+    if not atm or not atm.Parent then return false end
+    local ok, available = pcall(function()
+        if not atm:FindFirstChild("Area") then return false end
+        local keys = {}
+        for k in pairs(atm:GetAttributes()) do table.insert(keys, k) end
+        table.sort(keys)
+        -- إذا attribute الثالث true = متهكرة/مشغولة
+        if keys[3] and atm:GetAttribute(keys[3]) == true then
+            return false
+        end
+        return true
+    end)
+    return ok and available == true
+end
+
+function Sf:FindClosestAvailableATM(excludeAtm)
+    local success, result = pcall(function()
+        local atmFolder = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Props") and workspace.Map.Props:FindFirstChild("ATMs")
+        if not atmFolder then return nil end
+        local closestAvail, shortestAvail = nil, math.huge
+        for _, atm in pairs(atmFolder:GetChildren()) do
+            if atm ~= excludeAtm and atm.Name == "ATM" and atm:IsA("Model") and atm:FindFirstChild("Area") then
+                if Sf:IsATMAvailable(atm) then
+                    local d = Sf:dist(atm.Area.Position)
+                    if d < shortestAvail then
+                        closestAvail = atm
+                        shortestAvail = d
+                    end
+                end
+            end
+        end
+        return closestAvail
+    end)
+    return success and result or nil
+end
+
+function DepositAllMoney()
+    local success = pcall(function()
+        local handMoney = Sf:GetMoney()
+        if handMoney <= 0 then return true end
+        
+        local overallStart = tick()
+        local maxOverall = 45
+        local tried = {}
+        
+        while Config.AutoFarmActive and (tick() - overallStart) < maxOverall do
+            local handNow = Sf:GetMoney()
+            if handNow <= 0 then return true end
+            
+            local atm = Sf:FindClosestAvailableATM()
+            -- تجنب صرافات جربناها وفشلت للتو
+            local skipTries = 0
+            while atm and tried[atm] and skipTries < 5 do
+                atm = Sf:FindClosestAvailableATM(atm)
+                skipTries = skipTries + 1
+            end
+            if not atm or not atm:FindFirstChild("Area") then
+                return false
+            end
+            
+            local targetPos = atm.Area.Position
+            local startTime = tick()
+            local moveDone = false
+            local aborted = false
+            
+            Config.StopWalking = false
+            task.spawn(function()
+                Sf:SmartMoveTo(targetPos, function()
+                    -- continueCheck: وقف إذا تهكرت أو تغيرت
+                    if not Config.AutoFarmActive then return false end
+                    if not Sf:IsATMAvailable(atm) then
+                        aborted = true
+                        return false
+                    end
+                    return true
+                end)
+                moveDone = true
+            end)
+            
+            while not moveDone and (tick() - startTime) < 18 and Config.AutoFarmActive do
+                task.wait(0.25)
+                -- أثناء المشي: إذا تهكرت غيّر فوراً
+                if not Sf:IsATMAvailable(atm) then
+                    aborted = true
+                    Config.StopWalking = true
+                    task.wait(0.15)
+                    Config.StopWalking = false
+                    break
+                end
+            end
+            
+            if aborted or not Sf:IsATMAvailable(atm) then
+                tried[atm] = true
+                Config.StopWalking = true
+                task.wait(0.15)
+                Config.StopWalking = false
+                -- لف على صراف ثاني فوراً
+                continue
+            end
+            
+            if (tick() - startTime) >= 18 and not moveDone then
+                Config.StopWalking = true
+                task.wait(0.2)
+                Config.StopWalking = false
+                tried[atm] = true
+                continue
+            end
+            
+            -- وصلنا: تأكد مرة أخيرة إنها مو متهكرة
+            if not Sf:IsATMAvailable(atm) then
+                tried[atm] = true
+                continue
+            end
+            
+            local stillHave = Sf:GetMoney()
+            if stillHave > 0 then
+                Sf:RiseDoDescend(UNDERGROUND_Y + 10 + INTERACT_DROP, function()
+                    -- فحص أخير لحظة الإيداع
+                    if Sf:IsATMAvailable(atm) then
+                        pcall(function() Net.get("transfer_funds", "hand", "bank", stillHave) end)
+                        task.wait(0.35)
+                    end
+                end)
+            end
+            
+            -- إذا انودع خلاص
+            if Sf:GetMoney() <= 0 then
+                return true
+            end
+            -- لو ما انودع (تهكرت لحظة الإيداع) جرّب صراف ثاني
+            tried[atm] = true
+        end
+        
+        return Sf:GetMoney() <= 0
+    end)
+    
+    return success
+end
+
+function WithdrawSpecificAmount(amount)
+    local success = pcall(function()
+        if amount <= 0 then return true end
+        local currentHand = Sf:GetMoney()
+        if currentHand >= amount then return true end
+        local needed = amount - currentHand
+        if Sf:GetBankMoney() < needed then return false end
+        
+        local overallStart = tick()
+        local maxOverall = 45
+        local tried = {}
+        
+        while Config.AutoFarmActive and (tick() - overallStart) < maxOverall do
+            currentHand = Sf:GetMoney()
+            if currentHand >= amount then return true end
+            needed = amount - currentHand
+            if Sf:GetBankMoney() < needed then return false end
+            
+            local atm = Sf:FindClosestAvailableATM()
+            local skipTries = 0
+            while atm and tried[atm] and skipTries < 5 do
+                atm = Sf:FindClosestAvailableATM(atm)
+                skipTries = skipTries + 1
+            end
+            if not atm or not atm:FindFirstChild("Area") then
+                return false
+            end
+            
+            local startTime = tick()
+            local moveDone = false
+            local aborted = false
+            
+            Config.StopWalking = false
+            task.spawn(function()
+                Sf:SmartMoveTo(atm.Area.Position, function()
+                    if not Config.AutoFarmActive then return false end
+                    if not Sf:IsATMAvailable(atm) then
+                        aborted = true
+                        return false
+                    end
+                    return true
+                end)
+                moveDone = true
+            end)
+            
+            while not moveDone and (tick() - startTime) < 18 and Config.AutoFarmActive do
+                task.wait(0.25)
+                if not Sf:IsATMAvailable(atm) then
+                    aborted = true
+                    Config.StopWalking = true
+                    task.wait(0.15)
+                    Config.StopWalking = false
+                    break
+                end
+            end
+            
+            if aborted or not Sf:IsATMAvailable(atm) then
+                tried[atm] = true
+                Config.StopWalking = true
+                task.wait(0.15)
+                Config.StopWalking = false
+                continue
+            end
+            
+            if (tick() - startTime) >= 18 and not moveDone then
+                Config.StopWalking = true
+                task.wait(0.2)
+                Config.StopWalking = false
+                tried[atm] = true
+                continue
+            end
+            
+            if not Sf:IsATMAvailable(atm) then
+                tried[atm] = true
+                continue
+            end
+            
+            Sf:RiseDoDescend(UNDERGROUND_Y + 10 + INTERACT_DROP, function()
+                if Sf:IsATMAvailable(atm) then
+                    pcall(function() Net.get("transfer_funds", "bank", "hand", needed) end)
+                    task.wait(0.35)
+                end
+            end)
+            
+            if Sf:GetMoney() >= amount then
+                return true
+            end
+            tried[atm] = true
+        end
+        
+        return Sf:GetMoney() >= amount
+    end)
+    
+    return success
+end
+
+
+function BuyEquipment()
+    local hasRod, currentRodName, currentRodUid, _ = Sf:HasAnyRod()
+    local hasBait, currentBaitName, currentBaitUid = Sf:HasAnyBait()
+    -- نرمي الأغراض الزائدة فقط: ما نرمي أسماك ولا طعم ولا سنارة
+    local Items = PlayerGui:FindFirstChild("Items")
+    local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+    if Holding then
+        for _, v in pairs(Holding:GetChildren()) do
+            if v.Name ~= 'Folder' and v.Name ~= 'UIGridLayout' and v.Name ~= "ItemTemplate" then
+                local nameLbl = v:FindFirstChild("ItemName")
+                local itemType = v:GetAttribute("ItemType")
+                local nameText = (nameLbl and nameLbl.Text) and string.lower(nameLbl.Text) or ""
+                local typeLower = itemType and string.lower(tostring(itemType)) or ""
+                local isFish = (typeLower == "fish")
+                local isRod = string.find(nameText, "rod") ~= nil
+                local isBait = string.find(nameText, "wormtec") ~= nil or string.find(nameText, "prawntec") ~= nil
+                local isVehicle = (typeLower == "car" or typeLower == "bike")
+                if not isFish and not isRod and not isBait and not isVehicle then
+                    pcall(function() Net.get("drop_item", v.Name, 1) end)
+                    task.wait(0.05)
+                end
+            end
+        end
+    end
+    
+    local selectedRod = Config.RodSelect
+    local selectedBait = Config.BaitSelect
+    local targetBait = Config.BaitAmount
+    local fishingLevel = Sf:GetSkill("Fishing")
+    local targetRod = selectedRod
+    
+    if targetRod == "Smart Select" then
+        for _, rod in ipairs(FishingRods) do if fishingLevel >= rod.Level then targetRod = rod.Name; break end end
+    end
+    
+    local targetBaitName = selectedBait
+    if targetBaitName == "Smart Select" then
+        for _, bait in ipairs(FishingBaits) do if fishingLevel >= bait.Level then targetBaitName = bait.Name; break end end
+    end
+    
+    local hasRodAfterDrop, _, _, _ = Sf:HasAnyRod()
+    local hasBaitAfterDrop, _, _ = Sf:HasAnyBait()
+    local totalCost = 0
+    
+    if not hasRodAfterDrop then
+        for _, rod in ipairs(FishingRods) do if rod.Name == targetRod then totalCost = totalCost + rod.Price; break end end
+    end
+    if not hasBaitAfterDrop then
+        for _, bait in ipairs(FishingBaits) do if bait.Name == targetBaitName then totalCost = totalCost + (bait.Price * targetBait); break end end
+    end
+    
+    if totalCost <= 0 then return true end
+    if not WithdrawSpecificAmount(totalCost) then return false end
+    
+    Sf:SmartMoveTo(ShopLocation)
+    task.wait(0.25)
+    
+    local shopFolder = workspace:FindFirstChild("ShopZone_Hardware")
+    if not shopFolder then return false end
+    
+    Sf:RiseDoDescend(ShopLocation.Y, function()
+        if not hasRodAfterDrop then
+            pcall(function() Net.get("purchase_consumable", shopFolder, targetRod) end)
+            task.wait(0.25)
+        end
+        
+        if not hasBaitAfterDrop then
+            for i = 1, targetBait do
+                if not Config.AutoFarmActive then break end
+                pcall(function() Net.get("purchase_consumable", shopFolder, targetBaitName) end)
+                task.wait(0.08)
+            end
+            task.wait(0.3)
+        end
+    end)
+    
+    UpdateActivity()
+    return true
+end
+
+function EquipRod()
+    local hasRod, rodName, rodUid, _ = Sf:HasAnyRod()
+    if not hasRod or not rodName then return false end
+    if Sf:IsRodEquipped(rodName) then return true end
+    pcall(function() Net.get("toggle_equip_item", tostring(rodUid)) end)
+    task.wait(0.3)
+    local char = Client.Character
+    local backpack = Client:FindFirstChild("Backpack")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if char and backpack and humanoid then
+        local tool = backpack:FindFirstChild(rodName)
+        if tool then humanoid:EquipTool(tool) end
+    end
+    VU:SetKeyDown(Enum.KeyCode.Two)
+    task.wait(0.1)
+    VU:SetKeyUp(Enum.KeyCode.Two)
+    UpdateActivity()
+    return true
+end
+
+function EnsureRodEquipped()
+    if isDoingPots then return false end
+    local hasRod, rodName, _, _ = Sf:HasAnyRod()
+    if not hasRod or not rodName or not Sf:IsRodEquipped(rodName) then
+        return EquipRod()
+    end
+    return true
+end
+
+function EquipBaitOnRod()
+    local hasRod, _, rodUid = Sf:HasAnyRod()
+    local hasBait, _, baitUid = Sf:HasAnyBait()
+    if hasRod and rodUid and hasBait and baitUid then
+        pcall(function() Net.get("equip_ammo_on_item", rodUid, baitUid) end)
+        task.wait(0.2)
+        return true
+    end
+    return false
+end
+
+local SliderMinigame = nil
+for _, module in ipairs(RS:GetDescendants()) do
+    if module:IsA("ModuleScript") and module.Name == "SliderMinigame" then
+        local success, result = pcall(require, module)
+        if success then SliderMinigame = result end
+    end
+end
+
+local function ForceSliderTries()
+    if SliderMinigame and SliderMinigame.tries and SliderMinigame.tries.set then
+        pcall(function()
+            SliderMinigame.tries.set(99)
+        end)
+    end
+end
+
+ForceSliderTries()
+if SliderMinigame and SliderMinigame.enabled and SliderMinigame.enabled.hook then
+    pcall(function()
+        SliderMinigame.enabled.hook(function(on)
+            if on then
+                ForceSliderTries()
+            end
+        end)
+    end)
+end
+
+local function isSliderOpen()
+    if SliderMinigame and SliderMinigame.enabled and SliderMinigame.enabled.get then
+        return SliderMinigame.enabled.get() == true
+    end
+    local sliderGui = PlayerGui:FindFirstChild("SliderMinigame")
+    if sliderGui then
+        local frame = sliderGui:FindFirstChildOfClass("Frame")
+        if frame and frame.Visible then return true end
+    end
+    return false
+end
+
+local function QuickWin()
+    if SliderMinigame and SliderMinigame.win then
+        if type(SliderMinigame.win) == "table" and SliderMinigame.win.Fire then
+            SliderMinigame.win:Fire(true)
+            return true
+        end
+    end
+    return false
+end
+
+-- ============================================================
+-- Auto Respawn + Anti Stuck
+-- ============================================================
+task.spawn(function()
+    while task.wait(0.5) do
+        if not Config.Respawn then continue end
+        local deathscreen = PlayerGui:FindFirstChild("DeathScreen")
+        if deathscreen then
+            local holder = deathscreen:FindFirstChild("DeathScreenHolder")
+            if holder and holder.Visible then
+                local btn = holder:FindFirstChild("Frame") and holder.Frame:FindFirstChild("RespawnButtonFrame") and holder.Frame.RespawnButtonFrame:FindFirstChild("RespawnButton") and holder.Frame.RespawnButtonFrame.RespawnButton:FindFirstChild("TextLabel")
+                if btn and btn.Text == "Respawn" then
+                    pcall(function() Net.send("death_screen_request_respawn") end)
+                end
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(5)
+        if not Config.AutoFarmActive then
+            UpdateActivity()
+            continue
+        end
+
+        local currentTime = tick()
+        local timeSinceActivity = currentTime - LastActivityTime
+        local char = game.Players.LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local currentPos = char.HumanoidRootPart.Position
+            local distanceMoved = (currentPos - LastCheckedPosition).Magnitude
+            
+            if distanceMoved > 3 then
+                UpdateActivity()
+            elseif timeSinceActivity >= IdleThreshold then
+                pcall(function() Net.send("request_respawn") end)
+                task.wait(2)
+                UpdateActivity()
+            end
+        end
+    end
+end)
+
+-- Door modifiers
+do
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name == "DoorSystem" or v.Name == "BasementDoor" then
+            for _, x in ipairs(v:GetDescendants()) do
+                if x:IsA('BasePart') then
+                    x.CanCollide = false
+                    if not x:FindFirstChildOfClass("PathfindingModifier") then
+                        local mod = Instance.new("PathfindingModifier")
+                        mod.Label = "DoorArea"
+                        mod.PassThrough = true
+                        mod.Parent = x
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ============================================================
+-- Main Auto Farm Loop (منطق أصلي + مركبة + صيد راكب)
+-- ============================================================
+local farmLoopRunning = false
+
+
+-- ============================================================
+-- نظام الزراعة التلقائي (مدمج مع الصيد - بدون تبويب)
+-- ============================================================
+local houseNames = {
+    "TrapHouse2", "TrapHouseB", "TestTrapHouse", "TrapHouseA",
+    "TrapHouse1", "TrapHouse3", "House", "Home"
+}
+local POTS_UNDER_Y = UNDERGROUND_Y
+local POTS_INTERACT_DROP = INTERACT_DROP
+
+local function GetMyHouse()
+    local mapFolder = workspace:FindFirstChild("Map")
+    if not mapFolder then return nil end
+    local tiles = mapFolder:FindFirstChild("Tiles")
+    if not tiles then return nil end
+    for _, tile in ipairs(tiles:GetChildren()) do
+        for _, subTile in ipairs(tile:GetChildren()) do
+            for _, obj in ipairs(subTile:GetChildren()) do
+                if obj:IsA("Model") then
+                    local isHouse = false
+                    for _, name in ipairs(houseNames) do
+                        if obj.Name == name then isHouse = true break end
+                    end
+                    if isHouse then
+                        if obj:GetAttribute("Owner") == Client.Name or obj:GetAttribute("Owner") == Client then
+                            return obj
+                        end
+                        for _, child in ipairs(obj:GetChildren()) do
+                            if (child:IsA("StringValue") or child:IsA("ObjectValue")) and (child.Value == Client.Name or child.Value == Client) then
+                                return obj
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function IsMyHouse(houseObject)
+    if not houseObject then return false end
+    for _, name in ipairs(houseNames) do
+        if houseObject.Name == name then
+            if houseObject:GetAttribute("Owner") == Client.Name or houseObject:GetAttribute("Owner") == Client then
+                return true
+            end
+            for _, child in ipairs(houseObject:GetChildren()) do
+                if (child:IsA("StringValue") or child:IsA("ObjectValue")) and (child.Value == Client.Name or child.Value == Client) then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function RentHouseIfNeeded()
+    local myHouse = GetMyHouse()
+    if myHouse then return myHouse end
+    local availableHouses = {}
+    local housingTile = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Tiles") and workspace.Map.Tiles:FindFirstChild("HousingTile")
+    if housingTile then
+        for _, tile in ipairs(housingTile:GetChildren()) do
+            for _, obj in ipairs(tile:GetChildren()) do
+                for _, name in ipairs(houseNames) do
+                    if obj.Name == name then
+                        table.insert(availableHouses, obj)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    if #availableHouses == 0 then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") then
+                for _, name in ipairs(houseNames) do
+                    if obj.Name == name then
+                        table.insert(availableHouses, obj)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    if #availableHouses == 0 then return nil end
+    local randomHouse = availableHouses[math.random(1, #availableHouses)]
+    local ok = pcall(function() Net.get("rent_home", randomHouse) end)
+    if ok then
+        task.wait(2.5)
+        return GetMyHouse()
+    end
+    return nil
+end
+
+local function IsValidPot(pot)
+    if not pot then return false end
+    local lowerName = string.lower(tostring(pot.Name))
+    if string.find(lowerName, "template") or string.find(lowerName, "clone")
+        or string.find(lowerName, "fake") or string.find(lowerName, "preview")
+        or string.find(lowerName, "hidden") or string.find(lowerName, "ghost") then
+        return false
+    end
+
+    local part = nil
+    if pot:IsA("Model") then
+        part = pot.PrimaryPart or pot:FindFirstChildWhichIsA("BasePart")
+    elseif pot:IsA("BasePart") then
+        part = pot
+    end
+    if not part then return false end
+
+    local pos = part.Position
+    -- أسطل وهمية/مخفية غالباً على Y غلط أو عند الصفر
+    if (pos.X == 0 and pos.Y == 0 and pos.Z == 0) then return false end
+    if pos.Y < 200 or pos.Y > 320 then return false end
+
+    local hasPrompt = false
+    for _, desc in ipairs(pot:GetDescendants()) do
+        if desc:IsA("ProximityPrompt") then
+            hasPrompt = true
+            break
+        end
+    end
+    if not hasPrompt then
+        local p = part:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if p then hasPrompt = true end
+    end
+    if not hasPrompt then return false end
+
+    -- لازم يكون فيه جزء ظاهر بحجم حقيقي (مو سطل مخفي)
+    local hasSolid = false
+    for _, desc in ipairs(pot:GetDescendants()) do
+        if desc:IsA("BasePart") and desc.Transparency < 1 and desc.Size.Magnitude > 1 then
+            hasSolid = true
+            break
+        end
+    end
+    if not hasSolid and part.Transparency < 1 and part.Size.Magnitude > 1 then
+        hasSolid = true
+    end
+    return hasSolid
+end
+
+local function GetPlantTime(pot)
+    for _, desc in ipairs(pot:GetDescendants()) do
+        if desc:IsA("TextLabel") then
+            local txt = desc.Text or ""
+            local lowerTxt = string.lower(txt)
+            if string.find(lowerTxt, "done") or string.find(lowerTxt, "ready") or string.find(lowerTxt, "harvest") then
+                return "جاهز للحصاد!"
+            end
+            local timeMatch = string.match(txt, "%d+:%d+")
+            if timeMatch and timeMatch ~= "00:00" then
+                return timeMatch
+            end
+        end
+    end
+    return nil
+end
+
+local function GetPotState(pot)
+    local hasSoil, hasPlant = false, false
+    for _, child in ipairs(pot:GetDescendants()) do
+        if child.Name == "RegularSoil" then hasSoil = true end
+        if string.match(tostring(child.Name), "Stage%d+Sunflower") or child.Name == "Sunflower" then
+            hasPlant = true
+            hasSoil = true
+        end
+    end
+    if not hasSoil then
+        return "فارغ"
+    elseif hasSoil and not hasPlant then
+        return "تربة فقط"
+    else
+        local t = GetPlantTime(pot)
+        if t == "جاهز للحصاد!" then
+            return "جاهز للحصاد"
+        end
+        return "تربة وزرع"
+    end
+end
+
+local function GetItemCount(itemName)
+    local count = 0
+    if ItemUtils and Data_upvr then
+        pcall(function()
+            ItemUtils.iterate_through_items(Data_upvr, function(item)
+                if item and item.name == itemName and (item.location == "hand" or item.location == nil) then
+                    count = count + (item.amount or 1)
+                end
+            end)
+        end)
+    end
+    if count == 0 then
+        pcall(function()
+            local Items = PlayerGui:FindFirstChild("Items")
+            local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+            if not Holding then return end
+            for _, v in pairs(Holding:GetChildren()) do
+                if v.Name ~= "Folder" and v.Name ~= "UIGridLayout" and v.Name ~= "ItemTemplate" then
+                    local nameLbl = v:FindFirstChild("ItemName")
+                    if nameLbl and nameLbl.Text == itemName then
+                        count = count + 1
+                    end
+                end
+            end
+        end)
+    end
+    return count
+end
+
+local function UnequipAllTools()
+    pcall(function()
+        if Humanoid then
+            Humanoid:UnequipTools()
+        end
+        if Character then
+            for _, t in ipairs(Character:GetChildren()) do
+                if t:IsA("Tool") then
+                    t.Parent = Backpack or Client:FindFirstChild("Backpack")
+                end
+            end
+        end
+    end)
+    task.wait(0.08)
+end
+
+local function EquipItemFromInventory(itemName)
+    UnequipAllTools()
+    task.wait(0.12)
+
+    -- إذا أصلاً باليد
+    if Character and Character:FindFirstChild(itemName) then
+        return true
+    end
+
+    local guid = nil
+    -- من الداتا
+    if ItemUtils and Data_upvr then
+        pcall(function()
+            ItemUtils.iterate_through_items(Data_upvr, function(item)
+                if item and item.name == itemName and (item.location == "hand" or item.location == nil) then
+                    guid = item.guid or item.uid or item.id
+                end
+            end)
+        end)
+    end
+    -- من الواجهة
+    if not guid then
+        pcall(function()
+            local Items = PlayerGui:FindFirstChild("Items")
+            local Holding = Items and Items:FindFirstChild("ItemsHolder") and Items.ItemsHolder:FindFirstChild("ItemsScrollingFrame")
+            if not Holding then return end
+            for _, v in pairs(Holding:GetChildren()) do
+                if v.Name ~= "Folder" and v.Name ~= "UIGridLayout" and v.Name ~= "ItemTemplate" then
+                    local nameLbl = v:FindFirstChild("ItemName")
+                    if nameLbl and nameLbl.Text == itemName then
+                        guid = v.Name
+                        break
+                    end
+                end
+            end
+        end)
+    end
+
+    if guid then
+        pcall(function() Net.get("toggle_equip_item", tostring(guid)) end)
+        task.wait(0.25)
+    end
+
+    local t0 = tick()
+    while tick() - t0 < 3 do
+        Character = Client.Character or Character
+        Humanoid = Character and Character:FindFirstChildOfClass("Humanoid") or Humanoid
+        Backpack = Client:FindFirstChild("Backpack") or Backpack
+
+        -- من الشخصية مباشرة
+        if Character and Character:FindFirstChild(itemName) then
+            return true
+        end
+        -- من الحقيبة
+        if Backpack and Humanoid then
+            local tool = Backpack:FindFirstChild(itemName)
+            if not tool then
+                for _, t in ipairs(Backpack:GetChildren()) do
+                    if t:IsA("Tool") and string.find(string.lower(t.Name), string.lower(itemName), 1, true) then
+                        tool = t
+                        break
+                    end
+                end
+            end
+            if tool then
+                pcall(function() Humanoid:EquipTool(tool) end)
+                task.wait(0.15)
+                if Character and (Character:FindFirstChild(itemName) or Character:FindFirstChild(tool.Name)) then
+                    return true
+                end
+            end
+        end
+        -- إعادة toggle
+        if guid then
+            pcall(function() Net.get("toggle_equip_item", tostring(guid)) end)
+        end
+        task.wait(0.12)
+    end
+
+    local ok = Character and Character:FindFirstChild(itemName) ~= nil
+    if not ok then
+        print("❌ فشل تجهيز: " .. tostring(itemName))
+    else
+        print("✅ مجهز: " .. tostring(itemName))
+    end
+    return ok
+end
+
+local function PotsUpdatePlatform(vehicle)
+    if not PotsHiddenPlatform or not PotsHiddenPlatform.Parent then
+        local p = Instance.new("Part")
+        p.Name = "PotsHiddenPlatform"
+        p.Size = Vector3.new(18, 2, 18)
+        p.Transparency = 1
+        p.CanCollide = true
+        p.Anchored = true
+        p.Parent = workspace
+        PotsHiddenPlatform = p
+    end
+    if vehicle and vehicle.PrimaryPart then
+        local pos = vehicle.PrimaryPart.Position
+        PotsHiddenPlatform.CFrame = CFrame.new(pos.X, pos.Y - 1.5, pos.Z)
+    end
+end
+
+local function PotsDrive(vehicle, destination)
+    if not vehicle or not vehicle.PrimaryPart then return end
+    local targetY = destination.Y
+    local goal = Vector3.new(destination.X, targetY, destination.Z)
+    local speed = Config.VehicleSpeed or 55
+    PotsUpdatePlatform(vehicle)
+    if Humanoid and not Humanoid.Sit then
+        pcall(function() Sf:EnterVehicle(vehicle) end)
+        task.wait(0.1)
+    end
+    local t0, last = tick(), tick()
+    Config.Running = true
+    Config.StopWalking = false
+    while Config.AutoFarmActive and not isProtectionTriggered and not Config.StopWalking do
+        task.wait()
+        if not vehicle.PrimaryPart then break end
+        if tick() - t0 > 35 then break end
+        if Humanoid and not Humanoid.Sit then
+            pcall(function() Sf:EnterVehicle(vehicle) end)
+        end
+        local now = Vector3.new(vehicle.PrimaryPart.Position.X, targetY, vehicle.PrimaryPart.Position.Z)
+        local toGoal = Vector3.new(goal.X - now.X, 0, goal.Z - now.Z)
+        if toGoal.Magnitude <= 4 then break end
+        local dir = toGoal.Unit
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances = {Character, vehicle, PotsHiddenPlatform}
+        if workspace:Raycast(now, dir * 16, params) then
+            local right = Vector3.new(-dir.Z, 0, dir.X)
+            dir = (dir * 0.25 + right * ((tick() % 2 < 1) and 1 or -1)).Unit
+        end
+        local dt = math.clamp(tick() - last, 0, 0.05)
+        last = tick()
+        local step = math.min(speed * dt, toGoal.Magnitude)
+        local newPos = Vector3.new(now.X + dir.X * step, targetY, now.Z + dir.Z * step)
+        vehicle:PivotTo(CFrame.new(newPos) * CFrame.Angles(0, math.atan2(dir.X, dir.Z), 0))
+        PotsUpdatePlatform(vehicle)
+        for _, part in ipairs(vehicle:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.AssemblyLinearVelocity = Vector3.zero
+                part.AssemblyAngularVelocity = Vector3.zero
+            end
+        end
+    end
+    Config.Running = false
+    UpdateActivity()
+end
+
+local function PotsSmoothY(targetY, duration)
+    duration = duration or 1.0
+    local vehicle = Sf:GetOwnedVehicle()
+    local useV = vehicle and vehicle.PrimaryPart
+    if useV and Humanoid and not Humanoid.Sit then
+        pcall(function() Sf:EnterVehicle(vehicle) end)
+        task.wait(0.12)
+    end
+    local start = useV and vehicle:GetPivot() or (RootPart and RootPart.CFrame)
+    if not start then return end
+    local startY = start.Position.Y
+    local xz = Vector3.new(start.Position.X, 0, start.Position.Z)
+    local rot = start - start.Position
+    local t0 = tick()
+    while tick() - t0 < duration and Config.AutoFarmActive and not isProtectionTriggered do
+        local a = math.clamp((tick() - t0) / duration, 0, 1)
+        a = a * a * (3 - 2 * a)
+        local cf = CFrame.new(xz.X, startY + (targetY - startY) * a, xz.Z) * rot
+        if useV and vehicle and vehicle.PrimaryPart then
+            vehicle:PivotTo(cf)
+            PotsUpdatePlatform(vehicle)
+            for _, part in ipairs(vehicle:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.AssemblyLinearVelocity = Vector3.zero
+                    part.AssemblyAngularVelocity = Vector3.zero
+                end
+            end
+        elseif RootPart then
+            RootPart.CFrame = cf
+        end
+        task.wait(0.016)
+    end
+    UpdateActivity()
+end
+
+local function PotsGo(destination)
+    if not Config.AutoFarmActive or isProtectionTriggered then return end
+    local dest = Vector3.new(destination.X, POTS_UNDER_Y, destination.Z)
+    local vehicle = Sf:GetOwnedVehicle() or Sf:EnsureVehicle()
+    if vehicle then
+        if Humanoid and not Humanoid.Sit then
+            pcall(function() Sf:EnterVehicle(vehicle) end)
+            task.wait(0.1)
+        end
+        PotsDrive(vehicle, dest)
+    else
+        Sf:SmartMoveTo(dest)
+    end
+end
+
+local function PotsInteract(destination, actionFn)
+    if not Config.AutoFarmActive then return end
+    PotsGo(destination)
+    local interactY = (destination.Y or 252) - POTS_INTERACT_DROP
+    PotsSmoothY(interactY, 0.75)
+    if actionFn then pcall(actionFn) end
+    task.wait(0.15)
+    PotsSmoothY(POTS_UNDER_Y, 0.55)
+end
+
+local function CollectMyPots()
+    local myPots = {}
+    local seen = {}
+    local mapFolder = workspace:FindFirstChild("Map")
+    if not (mapFolder and mapFolder:FindFirstChild("Tiles")) then return myPots end
+
+    for _, tile in ipairs(mapFolder.Tiles:GetChildren()) do
+        for _, subTile in ipairs(tile:GetChildren()) do
+            local house = nil
+            for _, name in ipairs(houseNames) do
+                house = subTile:FindFirstChild(name)
+                if house then break end
+            end
+            if not (house and IsMyHouse(house)) then
+                -- continue
+            else
+                -- موقع البيت عشان نرفض أسطل بعيدة/وهمية
+                local housePos = nil
+                pcall(function()
+                    local hp = house.PrimaryPart or house:FindFirstChildWhichIsA("BasePart")
+                    if hp then housePos = hp.Position end
+                end)
+
+                local folder = subTile:FindFirstChild("FarmingPots")
+                if not folder then
+                    folder = house:FindFirstChild("FarmingPots", true)
+                end
+                if folder then
+                    for _, pot in ipairs(folder:GetChildren()) do
+                        if (pot:IsA("Model") or pot:IsA("BasePart")) and IsValidPot(pot) then
+                            local part = pot:IsA("Model") and (pot.PrimaryPart or pot:FindFirstChildWhichIsA("BasePart")) or pot
+                            if part then
+                                -- لازم قريب من البيت (مو سطل مخفي بعيد)
+                                local nearHouse = true
+                                if housePos then
+                                    local d = (Vector3.new(part.Position.X, 0, part.Position.Z) - Vector3.new(housePos.X, 0, housePos.Z)).Magnitude
+                                    if d > 80 then
+                                        nearHouse = false
+                                    end
+                                end
+                                if nearHouse then
+                                    local key = string.format("%.0f_%.0f_%.0f", part.Position.X, part.Position.Y, part.Position.Z)
+                                    if not seen[key] then
+                                        seen[key] = true
+                                        table.insert(myPots, pot)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    print("🪴 أسطل حقيقية: " .. tostring(#myPots))
+    return myPots
+end
+
+-- دورة زراعة كاملة (حصاد + تربة + بذور) ثم يرجع
+local function DoPotsCycle()
+    if isDoingPots or not Config.AutoFarmActive or isProtectionTriggered then return false end
+    isDoingPots = true
+    local didSomething = false
+
+    pcall(function()
+        -- اترك السنارة قبل الزراعة
+        UnequipAllTools()
+
+        local myHouse = GetMyHouse()
+        if not myHouse then
+            print("🏠 استئجار بيت...")
+            myHouse = RentHouseIfNeeded()
+            if not myHouse then
+                return
+            end
+            didSomething = true
+        end
+
+        local myPots = CollectMyPots()
+        if #myPots == 0 then
+            return
+        end
+
+        local emptyPots, soilOnlyPots, readyPots = {}, {}, {}
+        local stillGrowing = 0
+        for _, pot in ipairs(myPots) do
+            local st = GetPotState(pot)
+            if st == "فارغ" then
+                table.insert(emptyPots, pot)
+            elseif st == "تربة فقط" then
+                table.insert(soilOnlyPots, pot)
+            elseif st == "جاهز للحصاد" then
+                table.insert(readyPots, pot)
+            else
+                stillGrowing = stillGrowing + 1
+            end
+        end
+
+        print("🌱 فحص: جاهز=" .. #readyPots .. " ينمو=" .. stillGrowing .. " فارغ=" .. #emptyPots .. " تربة=" .. #soilOnlyPots .. " / إجمالي=" .. #myPots)
+
+        -- حصاد فقط إذا كل الأسطل جاهزة (ما في ولا واحد ينمو)
+        if #readyPots > 0 and stillGrowing == 0 and #emptyPots == 0 and #soilOnlyPots == 0 then
+            print("🌾 كل الأسطل جاهزة (" .. #readyPots .. ") — بدء الحصاد")
+            for _, pot in ipairs(readyPots) do
+                if not Config.AutoFarmActive or isProtectionTriggered then break end
+                local part = pot:IsA("Model") and (pot.PrimaryPart or pot:FindFirstChildWhichIsA("BasePart")) or pot
+                if part then
+                    PotsInteract(part.Position, function()
+                        local prompt = part:FindFirstChildWhichIsA("ProximityPrompt", true)
+                        if prompt then
+                            fireproximityprompt(prompt)
+                            task.wait(0.12)
+                        end
+                    end)
+                    didSomething = true
+                end
+            end
+            task.wait(0.4)
+            myPots = CollectMyPots()
+            emptyPots, soilOnlyPots, readyPots = {}, {}, {}
+            stillGrowing = 0
+            for _, pot in ipairs(myPots) do
+                local st = GetPotState(pot)
+                if st == "فارغ" then table.insert(emptyPots, pot)
+                elseif st == "تربة فقط" then table.insert(soilOnlyPots, pot)
+                elseif st == "جاهز للحصاد" then table.insert(readyPots, pot)
+                else stillGrowing = stillGrowing + 1 end
+            end
+        elseif #readyPots > 0 and stillGrowing > 0 then
+            print("⏳ جاهز=" .. #readyPots .. " لكن باقي " .. stillGrowing .. " ينمو — انتظار الكل")
+            return
+        end
+
+        local needsSoil = #emptyPots
+        local needsSeeds = #emptyPots + #soilOnlyPots
+
+        if needsSoil == 0 and needsSeeds == 0 then
+            return
+        end
+
+        local currentSoil = GetItemCount("RegularSoil")
+        local currentSeeds = GetItemCount("SunflowerSeeds")
+        local soilToBuy = math.max(0, needsSoil - currentSoil)
+        local seedsToBuy = math.max(0, needsSeeds - currentSeeds)
+        soilToBuy = math.min(soilToBuy, needsSoil)
+        seedsToBuy = math.min(seedsToBuy, needsSeeds)
+
+        print("🛒 تربة: عندك=" .. currentSoil .. " تحتاج=" .. needsSoil .. " شراء=" .. soilToBuy)
+        print("🛒 بذور: عندك=" .. currentSeeds .. " تحتاج=" .. needsSeeds .. " شراء=" .. seedsToBuy)
+
+        if soilToBuy > 0 or seedsToBuy > 0 then
+            local cost = (soilToBuy * 350) + (seedsToBuy * 190)
+            if cost > 0 and Sf:GetMoney() < cost then
+                pcall(function()
+                    if Sf:GetBankMoney() >= (cost - Sf:GetMoney() + 5) then
+                        WithdrawSpecificAmount(cost + 10)
+                    end
+                end)
+            end
+
+            local shopPos = Vector3.new(-135.7, 255.6, 153.3)
+            PotsInteract(shopPos, function()
+                task.wait(0.15)
+                for i = 1, soilToBuy do
+                    if not Config.AutoFarmActive then break end
+                    pcall(function()
+                        Net.get("purchase_consumable", workspace:FindFirstChild("ShopZone_Hardware"), "RegularSoil")
+                    end)
+                    task.wait(0.05)
+                end
+                for i = 1, seedsToBuy do
+                    if not Config.AutoFarmActive then break end
+                    pcall(function()
+                        Net.get("purchase_consumable", workspace:FindFirstChild("ShopZone_Hardware"), "SunflowerSeeds")
+                    end)
+                    task.wait(0.05)
+                end
+                task.wait(0.25)
+            end)
+            didSomething = true
+        end
+
+        -- جهّز التربة مرة واحدة قبل اللفة
+        if #emptyPots > 0 then
+            EquipItemFromInventory("RegularSoil")
+            task.wait(0.2)
+        end
+        for _, pot in ipairs(emptyPots) do
+            if not Config.AutoFarmActive or isProtectionTriggered then break end
+            if GetPotState(pot) == "فارغ" then
+                -- تأكد التربة باليد قبل ما نوصل
+                if not (Character and Character:FindFirstChild("RegularSoil")) then
+                    EquipItemFromInventory("RegularSoil")
+                    task.wait(0.15)
+                end
+                local part = pot:IsA("Model") and (pot.PrimaryPart or pot:FindFirstChildWhichIsA("BasePart")) or pot
+                if part and Character and Character:FindFirstChild("RegularSoil") then
+                    PotsInteract(part.Position, function()
+                        -- قبل البرومبت: تأكد مرة أخيرة التربة باليد مو السنارة
+                        if not (Character and Character:FindFirstChild("RegularSoil")) then
+                            EquipItemFromInventory("RegularSoil")
+                            task.wait(0.12)
+                        end
+                        if Character and Character:FindFirstChild("RegularSoil") then
+                            local prompt = part:FindFirstChildWhichIsA("ProximityPrompt", true)
+                            if prompt then
+                                fireproximityprompt(prompt)
+                                task.wait(0.2)
+                                fireproximityprompt(prompt)
+                                task.wait(0.15)
+                            end
+                        else
+                            print("⚠️ التربة مو باليد لحظة الزراعة")
+                        end
+                    end)
+                    didSomething = true
+                else
+                    print("⚠️ ما قدرت أجهّز RegularSoil — تخطي سطل")
+                end
+            end
+        end
+
+        myPots = CollectMyPots()
+        soilOnlyPots = {}
+        for _, pot in ipairs(myPots) do
+            if GetPotState(pot) == "تربة فقط" then
+                table.insert(soilOnlyPots, pot)
+            end
+        end
+
+        if #soilOnlyPots > 0 then
+            EquipItemFromInventory("SunflowerSeeds")
+            task.wait(0.2)
+        end
+        for _, pot in ipairs(soilOnlyPots) do
+            if not Config.AutoFarmActive or isProtectionTriggered then break end
+            if GetPotState(pot) == "تربة فقط" then
+                if not (Character and Character:FindFirstChild("SunflowerSeeds")) then
+                    EquipItemFromInventory("SunflowerSeeds")
+                    task.wait(0.15)
+                end
+                local part = pot:IsA("Model") and (pot.PrimaryPart or pot:FindFirstChildWhichIsA("BasePart")) or pot
+                if part and Character and Character:FindFirstChild("SunflowerSeeds") then
+                    PotsInteract(part.Position, function()
+                        if not (Character and Character:FindFirstChild("SunflowerSeeds")) then
+                            EquipItemFromInventory("SunflowerSeeds")
+                            task.wait(0.12)
+                        end
+                        if Character and Character:FindFirstChild("SunflowerSeeds") then
+                            local prompt = part:FindFirstChildWhichIsA("ProximityPrompt", true)
+                            if prompt then
+                                fireproximityprompt(prompt)
+                                task.wait(0.2)
+                                fireproximityprompt(prompt)
+                                task.wait(0.15)
+                            end
+                        else
+                            print("⚠️ البذور مو باليد لحظة الزراعة")
+                        end
+                    end)
+                    didSomething = true
+                else
+                    print("⚠️ ما قدرت أجهّز SunflowerSeeds — تخطي سطل")
+                end
+            end
+        end
+    end)
+
+    isDoingPots = false
+    Config.LastPotsCheck = tick()
+    return didSomething
+end
+
+-- ============================================================
+function StartAutoFarm()
+    if farmLoopRunning then return end
+    farmLoopRunning = true
+    
+    -- إبقاء السنارة مجهزة (يتوقف أثناء الزراعة)
+    task.spawn(function()
+        while Config.AutoFarmActive do
+            if not isDoingPots then
+                pcall(function()
+                    local char = Client.Character or Client.CharacterAdded:Wait()
+                    local backpack = Client:FindFirstChild("Backpack")
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    local toolNames = {"FishingRodUltimate", "FishingRodAdvanced", "FishingRodPro", "FishingRodRegular"}
+                    if backpack and humanoid then
+                        local mainTool = nil
+                        for _, name in ipairs(toolNames) do
+                            mainTool = char:FindFirstChild(name) or backpack:FindFirstChild(name)
+                            if mainTool then break end
+                        end
+                        if mainTool and mainTool.Parent == backpack then
+                            humanoid:EquipTool(mainTool)
+                        end
+                    end
+                end)
+            end
+            task.wait(0.5)
+        end
+    end)
+
+    -- 1) رسبن المركبة واركبها على السطح أولاً
+    if Config.UseVehicle then
+        local vehicle = Sf:RespawnAndMountVehicle()
+        if not vehicle then
+            vehicle = Sf:EnsureVehicle()
+            if vehicle then
+                Sf:EnterVehicle(vehicle)
+                task.wait(0.15)
+            end
+        end
+        if not Config.AutoFarmActive then farmLoopRunning = false return end
+    end
+
+    EquipRod()
+    if not Config.AutoFarmActive then farmLoopRunning = false return end
+
+    -- 2) ننزل تحت أولاً، بعدين شراء/إيداع عشان ما يطلع للصراف فوق
+    if Config.UseVehicle then
+        local vehicle = Sf:GetOwnedVehicle()
+        if vehicle and not Humanoid.Sit then
+            Sf:EnterVehicle(vehicle)
+            task.wait(0.12)
+        end
+        if vehicle then
+            Sf:CreateHiddenPlatform(vehicle)
+        end
+    end
+    Sf:SmoothVerticalMove(UNDERGROUND_Y, 0.85)
+    task.wait(0.08)
+
+    -- زراعة أول مرة قبل الصيد
+    if Config.AutoFarmPots then
+        pcall(function()
+            print("🌱 فحص الزراعة أول مرة...")
+            DoPotsCycle()
+        end)
+        task.wait(0.2)
+        -- تأكد نرجع تحت بعد الزراعة
+        pcall(function()
+            local vehicle = Sf:GetOwnedVehicle()
+            if vehicle and vehicle.PrimaryPart then
+                Sf:SmoothVerticalMove(UNDERGROUND_Y, 0.5)
+            end
+        end)
+    end
+
+    if Config.AutoBuyEnabled then
+        local hasRodStart = select(1, Sf:HasAnyRod())
+        local hasBaitStart = select(1, Sf:HasAnyBait())
+        if not (hasRodStart and hasBaitStart) then
+            BuyEquipment()
+            if not Config.AutoFarmActive then farmLoopRunning = false return end
+        end
+    end
+
+    while Config.AutoFarmActive do
+        if not Client.Character or not Client.Character.Parent then
+            task.wait(1)
+            continue
+        end
+        
+        Character = Client.Character
+        Humanoid = Character:FindFirstChildOfClass("Humanoid")
+        RootPart = Character:FindFirstChild("HumanoidRootPart")
+
+        if isProtectionTriggered then
+            while isProtectionTriggered and Config.AutoFarmActive do task.wait(0.4) end
+            if not Config.AutoFarmActive then break end
+            continue
+        end
+
+        -- ===== زراعة تلقائية (كل فترة أو أول تشغيل) =====
+        if Config.AutoFarmPots and not isDoingPots then
+            local needPotsNow = (tick() - (Config.LastPotsCheck or 0)) >= (Config.PotsCheckInterval or 45)
+            if needPotsNow or (Config.LastPotsCheck or 0) == 0 then
+                local didPots = false
+                pcall(function()
+                    didPots = DoPotsCycle()
+                end)
+                if didPots and Config.AutoFarmActive then
+                    -- رجع لمنطقة الصيد بعد الزراعة
+                    local zdata = Zones[Config.ZoneSelect]
+                    if zdata then
+                        pcall(function()
+                            Sf:SmartMoveTo(zdata.Pos)
+                            Sf:SmoothVerticalMove(zdata.Pos.Y, 0.4)
+                        end)
+                    end
+                    EquipRod()
+                    EquipBaitOnRod()
+                end
+            end
+        end
+        if isDoingPots then
+            task.wait(0.3)
+            continue
+        end
+
+        EnsureRodEquipped()
+
+        local zone = Config.ZoneSelect
+        local data = Zones[zone]
+        if not data then task.wait(1); continue end
+
+        local isFull, inventoryCount, maxSlots = Sf:IsInventoryFull()
+        local hasBait = Sf:HasAnyBait()
+        if inventoryCount == 0 then
+            task.wait(0.08)
+            isFull, inventoryCount, maxSlots = Sf:IsInventoryFull()
+            hasBait = Sf:HasAnyBait()
+        end
+        
+        -- === منطق البيع والشراء ===
+        -- بيع إذا الإنفنتوري ممتلئ (15 أو 17 حسب التوتال لفل) أو ما فيه طعم ومعك أسماك
+        local fishCount = Sf:GetFishCount()
+        local needSell = isFull or ((not hasBait) and fishCount > 0)
+        if needSell then
+            if fishCount > 0 then
+                Sf:SellFishWithPath()
+                task.wait(0.6)
+                if Sf:GetFishCount() > 0 then
+                    Sf:SellFishWithPath()
+                    task.wait(0.4)
+                end
+            end
+            
+            DepositAllMoney()
+            task.wait(0.4)
+            
+            if not Config.AutoFarmActive then break end
+            
+            hasBait = Sf:HasAnyBait()
+            if not hasBait then
+                if Config.AutoBuyEnabled then
+                    BuyEquipment()
+                    if not Config.AutoFarmActive then break end
+                    EquipRod()
+                    task.wait(0.3)
+                end
+            end
+            
+            isFull, inventoryCount, maxSlots = Sf:IsInventoryFull()
+            hasBait = Sf:HasAnyBait()
+        end
+
+        -- إذا التسكيب خلّى الطعم يخلص وما فيه سمك للبيع، روح اشترِ مباشرة
+        if Config.AutoFarmActive and Config.AutoBuyEnabled then
+            local hasRodNow = select(1, Sf:HasAnyRod())
+            hasBait = Sf:HasAnyBait()
+            if (not hasBait) or (not hasRodNow) then
+                BuyEquipment()
+                if not Config.AutoFarmActive then break end
+                EquipRod()
+                EquipBaitOnRod()
+                task.wait(0.3)
+                hasBait = Sf:HasAnyBait()
+                isFull, inventoryCount, maxSlots = Sf:IsInventoryFull()
+            end
+        end
+
+        -- === منطق الصيد ===
+        if Config.AutoFarmActive and (not isFull) and hasBait then
+            local zonePos = data.Pos
+            local myPos = RootPart and RootPart.Position or zonePos
+            local distToZone = (Vector3.new(myPos.X, 0, myPos.Z) - Vector3.new(zonePos.X, 0, zonePos.Z)).Magnitude
+            
+            -- نروح للمنطقة فقط لو بعيدين فعلياً (ما نتحرك بعد كل رمية)
+            if distToZone > 55 then
+                Sf:SmartMoveTo(data.Pos)
+                task.wait(0.12)
+            end
+            
+            -- نثبت ارتفاع منطقة 70 بالزبط
+            local veh = Sf:GetOwnedVehicle()
+            local holdPart = (veh and veh.PrimaryPart) or RootPart
+            if holdPart and math.abs(holdPart.Position.Y - data.Pos.Y) > 2 then
+                Sf:SmoothVerticalMove(data.Pos.Y, 0.35)
+            end
+            
+            if isProtectionTriggered then continue end
+            if not Sf:HasAnyBait() then continue end
+            
+            EnsureRodEquipped()
+
+            -- نتأكد إننا راكبين (ما ننزل أبداً لو راكبين)
+            if Config.UseVehicle then
+                local vehicle = Sf:GetOwnedVehicle()
+                if vehicle and not Humanoid.Sit then
+                    Sf:EnterVehicle(vehicle)
+                    task.wait(0.08)
+                end
+            end
+
+            EquipBaitOnRod()
+            task.wait(0.05)
+
+            local castPos
+            if zone == "Level 70 +" and Zones["Level 70 +"].CastPositions then
+                local positions = Zones["Level 70 +"].CastPositions
+                castPos = positions[math.random(1, #positions)]
+            else
+                local offset = Vector3.new(math.random(-45, -8), 0, math.random(-18, 18))
+                castPos = RootPart.Position + offset
+            end
+            
+            -- وقت الصيد ما نحرّك السيكل أبداً (هذا كان سبب الاهتزاز والتقدم)
+
+            local hasRod, rodName = Sf:HasAnyRod()
+            local rodTool = nil
+            if hasRod and rodName then
+                rodTool = Character:FindFirstChild(rodName) or Backpack:FindFirstChild(rodName)
+            end
+            
+            -- فحص نهائي قبل الرمي: إذا المخزون ممتلئ لا ترمي
+            local finalFull, finalCnt, finalMax = Sf:IsInventoryFull()
+            if finalFull or (finalCnt and finalMax and finalCnt >= finalMax) then
+                -- لا ترمي، الحلقة الرئيسية تبيع
+            elseif rodTool then
+                pcall(function() Net.get("throw_rod", rodTool, castPos) end)
+            else
+                pcall(function() VU:ClickButton1(Vector2.new(500, 300)) end)
+            end
+            
+            UpdateActivity()
+
+            local timeout = tick() + 25
+            local progressBarVisible = false
+            
+            while Config.AutoFarmActive and tick() < timeout and not isProtectionTriggered do
+                task.wait(0.1)
+                if isSliderOpen() then
+                    progressBarVisible = true
+                    UpdateActivity()
+                    break
+                end
+            end
+
+            if isProtectionTriggered then continue end
+
+            local keptThisCatch = false
+            if progressBarVisible then
+                local sliderSeenAt = tick()
+                local skippedThisCatch = false
+                while Config.AutoFarmActive and isSliderOpen() and not isProtectionTriggered do
+                    local hooked = getHookedFishName()
+                    local elapsed = tick() - sliderSeenAt
+                    if isSkipTarget(hooked) then
+                        if elapsed >= skipDelay and not isSkippingFish then
+                            skippedThisCatch = doSkipHookedFish(hooked, true)
+                            break
+                        end
+                    elseif elapsed >= 1.3 and not isSkippingFish then
+                        QuickWin()
+                        if rodTool then
+                            pcall(function() Net.send("reel_ended", rodTool, true) end)
+                        end
+                        keptThisCatch = true
+                        break
+                    end
+                    task.wait(0.05)
+                end
+                UpdateActivity()
+                task.wait(0.18)
+            else
+                local hooked = getHookedFishName()
+                if isSkipTarget(hooked) and not isSkippingFish then
+                    doSkipHookedFish(hooked, false)
+                elseif rodTool then
+                    pcall(function() Net.send("reel_ended", rodTool, false) end)
+                end
+            end
+
+            if keptThisCatch and Config.AutoFarmActive and not isDoingPots then
+                -- انتظر السمكة تدخل الإنفنتوري ثم بيع مباشرة
+                local waitFish = 0
+                while waitFish < 1.2 and Sf:GetFishCount() == 0 and Config.AutoFarmActive do
+                    task.wait(0.1)
+                    waitFish = waitFish + 0.1
+                end
+                if Sf:GetFishCount() > 0 then
+                    print("💰 سمكة محفوظة — بيع مباشر ثم رجوع للصيد")
+                    Sf:SellFishWithPath()
+                    task.wait(0.3)
+                    if Config.AutoFarmActive and Zones[Config.ZoneSelect] then
+                        Sf:SmartMoveTo(Zones[Config.ZoneSelect].Pos)
+                        Sf:SmoothVerticalMove(Zones[Config.ZoneSelect].Pos.Y, 0.35)
+                    end
+                    EnsureRodEquipped()
+                    EquipBaitOnRod()
+                end
+            end
+            
+            -- تأكد إننا ما نعلق بعد الرمية: ثبت الارتفاع وكمّل
+            if Config.UseVehicle then
+                local vehicle = Sf:GetOwnedVehicle()
+                if vehicle and vehicle.PrimaryPart and Humanoid and not Humanoid.Sit then
+                    Sf:EnterVehicle(vehicle)
+                end
+            end
+            local zoneData = Zones[Config.ZoneSelect]
+            if zoneData and RootPart then
+                local holdPart = RootPart
+                local veh2 = Sf:GetOwnedVehicle()
+                if veh2 and veh2.PrimaryPart then holdPart = veh2.PrimaryPart end
+                if holdPart and math.abs(holdPart.Position.Y - zoneData.Pos.Y) > 4 then
+                    Sf:SmoothVerticalMove(zoneData.Pos.Y, 0.25)
+                end
+            end
+        end
+        
+        task.wait(0.08)
+    end
+    farmLoopRunning = false
+end
+
+pcall(function() EnableAntiKick(true) end)
+
+]========]
+
+loadstring(ScriptCode)()
